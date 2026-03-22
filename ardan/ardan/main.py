@@ -15,11 +15,26 @@ def run(
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Override the default Ollama model"),
     workspace: Optional[str] = typer.Option(None, "--workspace", "-w", help="Set the output directory"),
     auto: bool = typer.Option(False, "--auto", help="Skip confirmation prompts"),
-    verbose: bool = typer.Option(False, "--verbose", help="Show raw LLM output and tool calls")
+    verbose: bool = typer.Option(False, "--verbose", help="Show raw LLM output and tool calls"),
+    output_format: str = typer.Option("text", "--output-format", help="Output format: text, json, stream-json")
 ):
     """Main command to build an entire software system from a single prompt."""
     console_ui.print_banner()
     agent = AgentCore(settings, model_override=model, workspace_override=workspace)
+
+    if output_format in ["json", "stream-json"]:
+        import json
+        all_updates = []
+        builder = agent.build_system(prompt, auto=auto)
+        for update in builder:
+             if output_format == "stream-json":
+                  typer.echo(json.dumps(update))
+             else:
+                  all_updates.append(update)
+
+        if output_format == "json":
+             typer.echo(json.dumps(all_updates))
+        return
 
     with console_ui.show_spinner("Initializing..."):
         builder = agent.build_system(prompt, auto=auto)
@@ -53,22 +68,90 @@ def run(
              # Spinner updates could go here
              pass
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.styles import Style
+
 @app.command()
 def chat():
     """Interactive REPL mode with the agent."""
     console_ui.print_banner()
     agent = AgentCore(settings)
-    typer.echo("Entering interactive chat mode. Type 'exit' to quit.")
+
+    session = PromptSession()
+    style = Style.from_dict({
+        'prompt': 'bold cyan',
+    })
+
+    messages = []
 
     while True:
-        user_input = typer.prompt("You")
-        if user_input.lower() in ["exit", "quit"]:
-            break
+        try:
+            user_input = session.prompt("> ", style=style)
+            if not user_input.strip():
+                continue
 
-        typer.echo("Ardan: ", nl=False)
-        for chunk in agent.chat(user_input):
-             typer.echo(chunk, nl=False)
-        typer.echo()
+            if user_input.startswith("/"):
+                cmd = user_input[1:].split()[0].lower()
+                if cmd == "help":
+                    console_ui.console.print("[bold cyan]/help[/bold cyan] - Show this help")
+                    console_ui.console.print("[bold cyan]/clear[/bold cyan] - Clear chat history")
+                    console_ui.console.print("[bold cyan]/save <name>[/bold cyan] - Save checkpoint")
+                    console_ui.console.print("[bold cyan]/load <name>[/bold cyan] - Load checkpoint")
+                    console_ui.console.print("[bold cyan]/exit[/bold cyan] - Exit chat")
+                    console_ui.console.print("[bold cyan]/models[/bold cyan] - List models")
+                    continue
+                elif cmd == "exit":
+                    break
+                elif cmd == "clear":
+                    messages = []
+                    console_ui.console.print("Chat history cleared.")
+                    continue
+                elif cmd == "models":
+                    models()
+                    continue
+                elif cmd == "save":
+                    try:
+                        name = user_input.split()[1]
+                        checkpoint_dir = os.path.join(agent.workspace, ".ardan", "checkpoints")
+                        os.makedirs(checkpoint_dir, exist_ok=True)
+                        import json
+                        with open(os.path.join(checkpoint_dir, f"{name}.json"), "w") as f:
+                             json.dump(messages, f)
+                        console_ui.console.print(f"Checkpoint '{name}' saved.")
+                    except IndexError:
+                        console_ui.console.print("Usage: /save <name>")
+                    continue
+                elif cmd == "load":
+                    try:
+                        name = user_input.split()[1]
+                        checkpoint_path = os.path.join(agent.workspace, ".ardan", "checkpoints", f"{name}.json")
+                        if os.path.exists(checkpoint_path):
+                             import json
+                             with open(checkpoint_path, "r") as f:
+                                  messages = json.load(f)
+                             console_ui.console.print(f"Checkpoint '{name}' loaded.")
+                        else:
+                             console_ui.console.print(f"Checkpoint '{name}' not found.")
+                    except IndexError:
+                        console_ui.console.print("Usage: /load <name>")
+                    continue
+
+            # Maintain history for chat
+            messages.append({"role": "user", "content": user_input})
+
+            console_ui.console.print(f"Responding with {agent.model}", style="italic grey50")
+
+            full_response = ""
+            for chunk in agent.chat_with_context(messages):
+                 console_ui.console.print(chunk, end="")
+                 full_response += chunk
+            console_ui.console.print()
+            messages.append({"role": "assistant", "content": full_response})
+
+        except KeyboardInterrupt:
+            continue
+        except EOFError:
+            break
 
 @app.command()
 def models():

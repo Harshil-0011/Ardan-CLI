@@ -23,6 +23,10 @@ class ArdanConsole:
     Autonomous Coding Agent CLI
         """
         self.console.print(Panel(banner, style="bold cyan"))
+        self.console.print("Tips for getting started:")
+        self.console.print("1. Ask questions, edit files, or run commands.")
+        self.console.print("2. Use [bold magenta]@path/to/file[/bold magenta] to include file content in context.")
+        self.console.print("3. Type [bold cyan]/help[/bold cyan] for more information.\n")
 
     def show_spinner(self, message: str):
         return self.console.status(message)

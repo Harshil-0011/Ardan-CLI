@@ -45,7 +45,7 @@ class OllamaClient:
             response = self._request_with_retry("POST", "/api/generate", json=payload)
             return response.json().get("response", "")
 
-    def chat(self, messages: List[Dict[str, str]], stream: bool = True) -> Union[str, Generator[str, None, None]]:
+    def chat(self, messages: List[Dict[str, Any]], stream: bool = True) -> Union[str, Generator[str, None, None]]:
         payload = {
             "model": self.model,
             "messages": messages,

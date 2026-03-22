@@ -28,13 +28,53 @@ class AgentCore:
         self.executor = Executor(self.client, self.memory)
         self.reviewer = Reviewer(self.client, self.memory)
 
+    def _load_ardan_md(self) -> str:
+        ardan_md_path = os.path.join(self.workspace, "ARDAN.md")
+        if os.path.exists(ardan_md_path):
+            try:
+                with open(ardan_md_path, "r") as f:
+                    return f"\nProject Context (ARDAN.md):\n{f.read()}\n"
+            except:
+                pass
+        return ""
+
+    def _process_file_references(self, prompt: str, images: List[str] = None) -> str:
+        # Simple regex to find @path/to/file references
+        import re
+        refs = re.findall(r"@([^\s]+)", prompt)
+        processed_prompt = prompt
+
+        for ref in refs:
+            if os.path.exists(ref):
+                try:
+                    # Check if it's an image
+                    ext = os.path.splitext(ref)[1].lower()
+                    if ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                         if images is not None:
+                              import base64
+                              with open(ref, "rb") as f:
+                                   images.append(base64.b64encode(f.read()).decode("utf-8"))
+                         processed_prompt = processed_prompt.replace(f"@{ref}", f"[Image: {ref}]")
+                    else:
+                        with open(ref, "r") as f:
+                            content = f.read()
+                            processed_prompt += f"\n\n--- Content of {ref} ---\n{content}\n"
+                except:
+                    pass
+        return processed_prompt
+
     def build_system(self, prompt: str, auto: bool = False) -> Generator[Dict[str, Any], None, None]:
         max_steps = self.settings.agent_max_steps
         current_step_count = 0
 
+        # Load project-specific context and process @file references
+        project_context = self._load_ardan_md()
+        processed_prompt = self._process_file_references(prompt)
+        full_prompt = project_context + processed_prompt
+
         # 1. PLAN
         yield {"status": "PLANNING", "message": "Creating task plan..."}
-        plan = self.planner.create_plan(prompt)
+        plan = self.planner.create_plan(full_prompt)
         yield {"status": "PLAN_READY", "plan": plan}
 
         # 2. EXECUTE
@@ -58,7 +98,7 @@ class AgentCore:
 
         # 3. REVIEW
         yield {"status": "REVIEWING", "message": "Reviewing output..."}
-        review_steps = self.reviewer.review_work(prompt)
+        review_steps = self.reviewer.review_work(full_prompt)
 
         if review_steps:
              yield {"status": "REVIEW_FAILED", "message": "Reviewer found issues, starting fixes...", "fix_plan": review_steps}
@@ -88,7 +128,13 @@ class AgentCore:
             }
         }
 
-    def chat(self, user_msg: str) -> Generator[str, None, None]:
-        # Simple chat interaction for REPL
-        for chunk in self.client.chat([{"role": "user", "content": user_msg}], stream=True):
+    def chat_with_context(self, messages: List[Dict[str, Any]]) -> Generator[str, None, None]:
+        # Process the last user message for @file references
+        if messages and messages[-1]["role"] == "user":
+             images = []
+             messages[-1]["content"] = self._process_file_references(messages[-1]["content"], images=images)
+             if images:
+                  messages[-1]["images"] = images
+
+        for chunk in self.client.chat(messages, stream=True):
              yield chunk
