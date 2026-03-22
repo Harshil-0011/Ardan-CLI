@@ -1,57 +1,111 @@
-# Ardan CLI
+# Ardan: Autonomous Coding Agent CLI
 
-Ardan is a fully functional coding agent CLI that uses Ollama as its LLM backend to autonomously build entire software systems from a single prompt.
+Ardan is a powerful, local-first coding agent that leverages [Ollama](https://ollama.com/) to build complete software systems from simple natural language prompts. It handles the entire lifecycle: planning, execution, and review, all while keeping you in the loop with a beautiful, real-time terminal interface.
 
-## Features
-- **Autonomous System Building**: From planning to execution and review.
-- **Ollama Backend**: Uses local LLMs, no API keys required.
-- **Rich Terminal UI**: Beautiful status updates, code highlighting, and progress bars.
-- **Comprehensive Toolset**: File operations, shell commands, code linting/formatting, and web search.
-- **ReAct Agent Loop**: Reason and Act cycle for complex problem solving.
+---
 
-## Installation
+## 🚀 Key Features
+
+-   **🧠 Autonomous Problem Solving**: Uses a ReAct (Reasoning + Acting) loop to break down complex tasks into actionable steps.
+-   **🔌 Deep Tool Integration**: Can read/write files, execute shell commands, lint/format code, and search the web.
+-   **🏠 100% Local & Private**: Powered by Ollama. Your code never leaves your machine. No API keys, no subscriptions.
+-   **✨ Rich Terminal UI**: Experience real-time progress with syntax-highlighted code previews, spinners, and task tables.
+-   **♻️ Self-Correction**: Includes a reviewer phase that identifies bugs and missing features, triggering an automatic fix cycle.
+-   **📂 Context Management**: Automatically summarizes long history to maintain coherence within LLM context windows.
+
+---
+
+## 🏛️ Project Architecture
+
+Ardan is built with a modular, extensible architecture:
+
+-   `agent/`: The brain. Orchestrates the **Planner**, **Executor**, **Reviewer**, and **Memory** modules.
+-   `tools/`: The hands. A growing collection of specialized utilities:
+    -   `file_tools`: Robust file operations (read, write, append, search/replace).
+    -   `shell_tools`: Secure command execution and temporary script running.
+    -   `code_tools`: Python-specific linting (ruff/py_compile) and formatting (black).
+    -   `web_tools`: Real-time web search via DuckDuckGo scraping (no API needed).
+-   `ollama/`: The bridge. Handles communication with your local Ollama instance with streaming and retry logic.
+-   `ui/`: The face. A `rich`-powered console interface for a professional CLI experience.
+-   `config/`: The control center. Manage models, workspaces, and agent behavior via `config.yaml` or env vars.
+
+---
+
+## 🛠️ Installation
 
 1.  **Prerequisites**:
-    - Python 3.11+
-    - [Ollama](https://ollama.com/) installed and running.
+    -   Python 3.11+
+    -   [Ollama](https://ollama.com/) installed and running.
 2.  **Clone and Install**:
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/yourusername/ardan.git
     cd ardan
     pip install -e .
     ```
-3.  **Pull Required Model**:
+3.  **Pull the Recommended Model**:
     ```bash
     ollama pull codellama:13b
     ```
 
-## Usage
+---
 
-### Build a Project
+## 📖 Usage Examples
+
+### Build a Full-Stack Application
 ```bash
-ardan run "Build a FastAPI app with SQLite, user auth (JWT), and CRUD endpoints for a todo list. Include Dockerfile and tests."
+ardan run "Build a FastAPI backend with SQLite and JWT auth, plus a React frontend with Tailwind CSS. Include a docker-compose.yml to run both."
 ```
 
-### Options
-- `--model <model_name>`: Override the default Ollama model.
-- `--workspace <path>`: Set the output directory for the project.
-- `--auto`: Skip confirmation prompts (fully autonomous mode).
-- `--verbose`: Show raw LLM output and tool calls.
+### Create a CLI Tool
+```bash
+ardan run "Create a Python CLI tool that monitors a folder and auto-compresses new images using Pillow. Add a --verbose flag."
+```
 
-### Interactive Mode
+### override Defaults
+```bash
+# Use a different model
+ardan run "Build a simple snake game in Python" --model llama3
+
+# specify a custom workspace
+ardan run "Create a web scraper for news sites" --workspace ./my-scrapers
+
+# Fully autonomous mode (skip confirmations)
+ardan run "Refactor the current project to use async/await" --auto
+```
+
+### Interactive Chat Mode
+Need to brainstorm or ask questions? Use the REPL:
 ```bash
 ardan chat
 ```
 
-### Other Commands
-- `ardan models`: List available Ollama models.
-- `ardan config`: Show or edit current configuration.
+---
 
-## Troubleshooting
+## ⚙️ Configuration
 
-- **Ollama not running**: Ensure Ollama is started (`ollama serve`).
-- **Model not found**: Run `ollama pull <model_name>` for the model specified in your config or command.
-- **Connection Errors**: Check if Ollama is accessible at `http://localhost:11434`.
+Ardan looks for `config.yaml` in its project root. You can also use environment variables:
 
-## Customization
-You can modify `config.yaml` to change default models, workspace directories, and agent behavior.
+| Variable | Config Key | Default |
+| :--- | :--- | :--- |
+| `ARDAN_MODEL` | `ollama.model` | `codellama:13b` |
+| `ARDAN_WORKSPACE` | `agent.workspace` | `./ardan-output` |
+| `ARDAN_MAX_STEPS` | `agent.max_steps` | `50` |
+| `ARDAN_OLLAMA_BASE_URL` | `ollama.base_url` | `http://localhost:11434` |
+
+---
+
+## 🛠️ Adding Custom Tools
+
+Extending Ardan is easy:
+1.  Add your function in a new or existing file in `ardan/tools/`.
+2.  Ensure it returns a `ToolResult(success: bool, output: str, error: str)`.
+3.  Register the tool in `ardan/agent/executor.py` within the `self.tools` dictionary.
+4.  Update the `EXECUTOR_SYSTEM` prompt in `ardan/ollama/prompts.py` so the agent knows how to use it.
+
+---
+
+## ❓ Troubleshooting
+
+-   **Ollama Connection Refused**: Ensure Ollama is running (`ollama serve`).
+-   **Model Not Found**: Ardan will try to use `codellama:13b` by default. If you don't have it, run `ollama pull codellama:13b` or override it with `--model`.
+-   **Tool Failures**: If a command fails (e.g., `ruff` not found), Ardan will attempt to use a fallback or report the error and try a different approach.

@@ -82,9 +82,29 @@ def models():
     except Exception as e:
         console_ui.print_error(f"Failed to list models: {str(e)}")
 
-@app.command()
-def config():
-    """Show current config."""
+@app.command(name="config")
+def show_config(
+    set_val: Optional[str] = typer.Option(None, "--set", help="Set a config value, format: section.key=value")
+):
+    """Show or edit current config."""
+    if set_val:
+        try:
+            key_path, value = set_val.split("=", 1)
+            section, key = key_path.split(".", 1)
+            # Try to convert value to appropriate type
+            if value.lower() == "true": value = True
+            elif value.lower() == "false": value = False
+            elif value.isdigit(): value = int(value)
+            else:
+                 try: value = float(value)
+                 except ValueError: pass
+
+            settings.set(section, key, value)
+            typer.echo(f"Updated {section}.{key} to {value}")
+        except ValueError:
+            typer.echo("Invalid format for --set. Use section.key=value")
+            raise typer.Exit(1)
+
     typer.echo("Current Configuration:")
     for section, values in settings.config.items():
         typer.echo(f"[{section}]")

@@ -7,10 +7,11 @@ def search_web(query: str) -> ToolResult:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
-        url = f"https://duckduckgo.com/html/?q={query}"
+        url = "https://duckduckgo.com/html/"
+        params = {"q": query}
 
         with httpx.Client(timeout=10.0) as client:
-            response = client.get(url, headers=headers)
+            response = client.get(url, headers=headers, params=params)
             response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")

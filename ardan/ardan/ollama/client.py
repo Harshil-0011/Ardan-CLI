@@ -63,6 +63,20 @@ class OllamaClient:
             return response.json().get("message", {}).get("content", "")
 
     def _stream_response(self, endpoint: str, payload: Dict[str, Any]) -> Generator[str, None, None]:
+        max_retries = 3
+        retry_delay = 1.0
+
+        for i in range(max_retries):
+            try:
+                yield from self._do_stream(endpoint, payload)
+                return
+            except (httpx.ConnectError, httpx.HTTPStatusError, httpx.TimeoutException) as e:
+                if i == max_retries - 1:
+                    raise e
+                time.sleep(retry_delay)
+                retry_delay *= 2
+
+    def _do_stream(self, endpoint: str, payload: Dict[str, Any]) -> Generator[str, None, None]:
         try:
             with httpx.stream("POST", f"{self.base_url}{endpoint}", json=payload, timeout=self.timeout) as response:
                 response.raise_for_status()
