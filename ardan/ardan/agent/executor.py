@@ -5,14 +5,16 @@ from ardan.ollama.client import OllamaClient
 from ardan.ollama.prompts import EXECUTOR_SYSTEM, TOOL_FORMAT
 from ardan.tools.file_tools import read_file, write_file, append_file, list_files, delete_file, search_and_replace, ToolResult
 from ardan.tools.shell_tools import run_command, run_script
-from ardan.tools.code_tools import lint_python, format_python, search_in_files
-from ardan.tools.web_tools import search_web
+from ardan.tools.code_tools import lint_python, format_python, search_in_files, investigate_codebase
+from ardan.tools.web_tools import search_web, fetch_url
+from ardan.tools.mcp_tools import MCPManager
 from ardan.agent.memory import Memory
 
 class Executor:
-    def __init__(self, client: OllamaClient, memory: Memory):
+    def __init__(self, client: OllamaClient, memory: Memory, mcp_manager: MCPManager = None):
         self.client = client
         self.memory = memory
+        self.mcp_manager = mcp_manager or MCPManager()
         self.tools = {
             "read_file": read_file,
             "write_file": write_file,
@@ -25,7 +27,9 @@ class Executor:
             "lint_python": lint_python,
             "format_python": format_python,
             "search_in_files": search_in_files,
-            "search_web": search_web
+            "investigate_codebase": investigate_codebase,
+            "search_web": search_web,
+            "fetch_url": fetch_url
         }
 
     def execute_step(self, step: Dict[str, Any], max_retries: int = 5) -> Generator[str, None, None]:
@@ -58,8 +62,13 @@ class Executor:
                            tool_name = tool_call.get("name")
                            tool_args = tool_call.get("args", {})
 
+                           result = None
                            if tool_name in self.tools:
-                                result: ToolResult = self.tools[tool_name](**tool_args)
+                                result = self.tools[tool_name](**tool_args)
+                           elif self.mcp_manager and tool_name in self.mcp_manager.tools:
+                                result = self.mcp_manager.call_tool(tool_name, tool_args)
+
+                           if result:
                                 result_str = f"Success: {result.success}\nOutput: {result.output}\nError: {result.error}"
                                 self.memory.add_step("TOOL_RESULT", {"tool": tool_name, "args": tool_args, "result": result_str})
                                 messages.append({"role": "user", "content": f"Observation from {tool_name}: {result_str}"})

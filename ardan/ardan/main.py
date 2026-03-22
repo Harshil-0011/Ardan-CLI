@@ -70,6 +70,7 @@ def run(
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
+from prompt_toolkit.completion import WordCompleter, MergedCompleter, PathCompleter
 
 @app.command()
 def chat():
@@ -77,12 +78,20 @@ def chat():
     console_ui.print_banner()
     agent = AgentCore(settings)
 
-    session = PromptSession()
+    completer = MergedCompleter([
+        WordCompleter(["/help", "/clear", "/exit", "/models", "/save", "/load", "/rewind", "/stats"]),
+        PathCompleter()
+    ])
+    session = PromptSession(completer=completer)
     style = Style.from_dict({
         'prompt': 'bold cyan',
     })
 
     messages = []
+
+    # Render initial footer
+    footer = console_ui.make_footer(agent.workspace, agent.model)
+    console_ui.console.print(footer)
 
     while True:
         try:
@@ -99,6 +108,9 @@ def chat():
                     console_ui.console.print("[bold cyan]/load <name>[/bold cyan] - Load checkpoint")
                     console_ui.console.print("[bold cyan]/exit[/bold cyan] - Exit chat")
                     console_ui.console.print("[bold cyan]/models[/bold cyan] - List models")
+                    console_ui.console.print("[bold cyan]/rewind[/bold cyan] - Undo last turn")
+                    console_ui.console.print("[bold cyan]/stats[/bold cyan] - Show session stats")
+                    console_ui.console.print("[bold cyan]/plan <task>[/bold cyan] - Enter plan mode")
                     continue
                 elif cmd == "exit":
                     break
@@ -134,6 +146,23 @@ def chat():
                              console_ui.console.print(f"Checkpoint '{name}' not found.")
                     except IndexError:
                         console_ui.console.print("Usage: /load <name>")
+                    continue
+                elif cmd == "rewind":
+                    if len(messages) >= 2:
+                         messages = messages[:-2]
+                         console_ui.console.print("Last turn undone.")
+                    else:
+                         console_ui.console.print("Nothing to rewind.")
+                    continue
+                elif cmd == "stats":
+                    console_ui.display_summary(agent.memory.__dict__)
+                    continue
+                elif cmd == "plan":
+                    try:
+                        task = user_input.split(" ", 1)[1]
+                        run(task, model=agent.model, workspace=agent.workspace, auto=False)
+                    except IndexError:
+                        console_ui.console.print("Usage: /plan <task>")
                     continue
 
             # Maintain history for chat

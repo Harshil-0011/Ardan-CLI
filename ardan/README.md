@@ -8,6 +8,7 @@ Ardan is a powerful, local-first coding agent that leverages [Ollama](https://ol
 
 -   **🧠 Autonomous Problem Solving**: Uses a ReAct (Reasoning + Acting) loop to break down complex tasks into actionable steps.
 -   **🔌 Deep Tool Integration**: Can read/write files, execute shell commands, lint/format code, and search the web.
+-   **🔌 MCP Support**: Extend capabilities with Model Context Protocol (MCP) servers.
 -   **🏠 100% Local & Private**: Powered by Ollama. Your code never leaves your machine. No API keys, no subscriptions.
 -   **✨ Rich Terminal UI**: Experience real-time progress with syntax-highlighted code previews, spinners, and task tables.
 -   **♻️ Self-Correction**: Includes a reviewer phase that identifies bugs and missing features, triggering an automatic fix cycle.
@@ -74,10 +75,29 @@ ardan run "Refactor the current project to use async/await" --auto
 ```
 
 ### Interactive Chat Mode
-Need to brainstorm or ask questions? Use the REPL:
+Ardan features a powerful interactive REPL built with `prompt_toolkit`:
 ```bash
 ardan chat
 ```
+- **Slash Commands**: `/help`, `/clear`, `/save`, `/load`, `/rewind`, `/stats`, `/plan`, `/exit`.
+- **Autocompletion**: Tab-complete commands and file paths.
+- **Context Injection**: Use `@path/to/file` or `@path/to/image.png` directly in your chat.
+- **Checkpointing**: Save and resume complex sessions.
+
+### Plan Mode
+Break down complex tasks and execute them systematically:
+```bash
+> /plan "Implement a distributed task queue with Redis and Python"
+```
+
+---
+
+## 🔧 Advanced Features
+
+- **Multimodal capabilities**: Ardan can "see" images. Just mention them with `@image.png`.
+- **Project Context (ARDAN.md)**: Add a `ARDAN.md` file to your project root to provide persistent, project-specific instructions to the agent.
+- **Codebase Investigation**: Ardan can perform deep analysis of your project structure using the `investigate_codebase` tool.
+- **Non-Interactive Scripting**: Integrate Ardan into your workflows with `--output-format json` or `stream-json`.
 
 ---
 

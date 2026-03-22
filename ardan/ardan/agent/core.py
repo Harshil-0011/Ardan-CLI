@@ -5,6 +5,7 @@ from ardan.agent.planner import Planner
 from ardan.agent.executor import Executor
 from ardan.agent.reviewer import Reviewer
 from ardan.agent.memory import Memory
+from ardan.tools.mcp_tools import MCPManager
 from ardan.config.settings import Settings
 
 class AgentCore:
@@ -24,8 +25,13 @@ class AgentCore:
         )
 
         self.memory = Memory(self.workspace)
+        self.mcp_manager = MCPManager()
+        # Initialize MCP servers from settings
+        mcp_config = settings.get("mcp", "servers", {})
+        self.mcp_manager.load_from_config(mcp_config)
+
         self.planner = Planner(self.client)
-        self.executor = Executor(self.client, self.memory)
+        self.executor = Executor(self.client, self.memory, mcp_manager=self.mcp_manager)
         self.reviewer = Reviewer(self.client, self.memory)
 
     def _load_ardan_md(self) -> str:

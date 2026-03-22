@@ -37,7 +37,9 @@ Available tools:
 - lint_python(path)
 - format_python(path)
 - search_in_files(directory, query)
+- investigate_codebase(directory)
 - search_web(query)
+- fetch_url(url)
 
 When you are finished with the entire task, end your response with: <finished>SUMMARY_OF_WORK</finished>
 """

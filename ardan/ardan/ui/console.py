@@ -6,6 +6,7 @@ from rich.spinner import Spinner
 from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn
+from rich.layout import Layout
 import time
 
 class ArdanConsole:
@@ -61,6 +62,17 @@ class ArdanConsole:
 
     def print_success(self, message: str):
         self.console.print(f"[green]SUCCESS: {message}[/green]")
+
+    def make_footer(self, workspace: str, model: str, steps: int = 0):
+        grid = Table.grid(expand=True)
+        grid.add_column(justify="left", ratio=1)
+        grid.add_column(justify="right", ratio=1)
+
+        grid.add_row(
+            f" [bold cyan]Workspace:[/bold cyan] {workspace} | [bold yellow]Model:[/bold yellow] {model}",
+            f"[bold magenta]Steps:[/bold magenta] {steps} | [bold red]Sandbox:[/bold red] no sandbox (see /docs)"
+        )
+        return Panel(grid, style="white on blue")
 
     def display_summary(self, stats: dict):
         table = Table(title="Project Summary")

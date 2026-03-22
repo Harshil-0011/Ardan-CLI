@@ -56,3 +56,32 @@ def search_in_files(directory: str, query: str) -> ToolResult:
             return ToolResult(True, f"No matches for '{query}' found.")
     except Exception as e:
         return ToolResult(False, "", str(e))
+
+def investigate_codebase(directory: str) -> ToolResult:
+    """Analyze the codebase structure and key files."""
+    try:
+        structure = []
+        for root, dirs, files in os.walk(directory):
+            level = root.replace(directory, "").count(os.sep)
+            indent = " " * 4 * level
+            structure.append(f"{indent}{os.path.basename(root)}/")
+            sub_indent = " " * 4 * (level + 1)
+            for f in files[:10]: # Limit files shown
+                 structure.append(f"{sub_indent}{f}")
+
+        # Read a few important files if they exist
+        important_files = ["README.md", "pyproject.toml", "requirements.txt", "package.json"]
+        summaries = []
+        for f_name in important_files:
+             p = os.path.join(directory, f_name)
+             if os.path.exists(p):
+                  with open(p, "r") as f:
+                       summaries.append(f"--- {f_name} ---\n{f.read()[:500]}...")
+
+        output = "Codebase Structure:\n" + "\n".join(structure[:100])
+        if summaries:
+             output += "\n\nKey File Contents:\n" + "\n".join(summaries)
+
+        return ToolResult(True, output)
+    except Exception as e:
+        return ToolResult(False, "", str(e))
