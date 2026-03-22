@@ -63,13 +63,25 @@ class ArdanConsole:
     def print_success(self, message: str):
         self.console.print(f"[green]SUCCESS: {message}[/green]")
 
-    def make_footer(self, workspace: str, model: str, steps: int = 0):
+    def make_footer(self, workspace: str, model: str, steps: int = 0, provider: str = "ollama"):
+        provider_colors = {
+            "anthropic": "orange1",
+            "google": "blue",
+            "openai": "green",
+            "mistral": "purple",
+            "groq": "yellow",
+            "openrouter": "cyan",
+            "ollama": "white"
+        }
+        color = provider_colors.get(provider.lower(), "white")
+        badge = f"[{color}]●[/{color}] [bold]{provider.upper()}[/bold]"
+
         grid = Table.grid(expand=True)
         grid.add_column(justify="left", ratio=1)
         grid.add_column(justify="right", ratio=1)
 
         grid.add_row(
-            f" [bold cyan]Workspace:[/bold cyan] {workspace} | [bold yellow]Model:[/bold yellow] {model}",
+            f" {badge} | [bold cyan]Workspace:[/bold cyan] {workspace} | [bold yellow]Model:[/bold yellow] {model}",
             f"[bold magenta]Steps:[/bold magenta] {steps} | [bold red]Sandbox:[/bold red] no sandbox (see /docs)"
         )
         return Panel(grid, style="white on blue")

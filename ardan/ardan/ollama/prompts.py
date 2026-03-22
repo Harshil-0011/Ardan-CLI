@@ -40,6 +40,17 @@ Available tools:
 - investigate_codebase(directory)
 - search_web(query)
 - fetch_url(url)
+- git_init(directory)
+- git_commit(directory, message)
+- git_branch(directory, name)
+- run_tests(directory)
+- docker_build(directory, tag)
+- docker_run(tag, port_mapping)
+- generate_dockerfile(directory, language)
+- generate_docker_compose(directory)
+- scan_deps(directory)
+- auto_install_deps(directory)
+- generate_ascii_diagram(directory)
 
 When you are finished with the entire task, end your response with: <finished>SUMMARY_OF_WORK</finished>
 """

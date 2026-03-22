@@ -7,12 +7,19 @@ from ardan.tools.file_tools import read_file, write_file, append_file, list_file
 from ardan.tools.shell_tools import run_command, run_script
 from ardan.tools.code_tools import lint_python, format_python, search_in_files, investigate_codebase
 from ardan.tools.web_tools import search_web, fetch_url
+from ardan.tools.git_tools import git_init, git_commit, git_branch
+from ardan.tools.test_tools import run_tests
+from ardan.tools.docker_tools import docker_build, docker_run, generate_dockerfile, generate_docker_compose
+from ardan.tools.deps_tools import scan_deps, auto_install_deps
+from ardan.tools.diagram_tools import generate_ascii_diagram
 from ardan.tools.mcp_tools import MCPManager
 from ardan.agent.memory import Memory
+from ardan.agent.messages import Message, GenerationConfig
+from typing import Dict, Any, List, Optional, AsyncIterator
 
 class Executor:
-    def __init__(self, client: OllamaClient, memory: Memory, mcp_manager: MCPManager = None):
-        self.client = client
+    def __init__(self, provider: Any, memory: Memory, mcp_manager: MCPManager = None):
+        self.provider = provider
         self.memory = memory
         self.mcp_manager = mcp_manager or MCPManager()
         self.tools = {
@@ -29,14 +36,29 @@ class Executor:
             "search_in_files": search_in_files,
             "investigate_codebase": investigate_codebase,
             "search_web": search_web,
-            "fetch_url": fetch_url
+            "fetch_url": fetch_url,
+            "git_init": git_init,
+            "git_commit": git_commit,
+            "git_branch": git_branch,
+            "run_tests": run_tests,
+            "docker_build": docker_build,
+            "docker_run": docker_run,
+            "generate_dockerfile": generate_dockerfile,
+            "generate_docker_compose": generate_docker_compose,
+            "scan_deps": scan_deps,
+            "auto_install_deps": auto_install_deps,
+            "generate_ascii_diagram": generate_ascii_diagram
         }
 
-    def execute_step(self, step: Dict[str, Any], max_retries: int = 5) -> Generator[str, None, None]:
+    async def execute_step(self, step: Dict[str, Any], max_retries: int = 5) -> AsyncIterator[str]:
         # Construct message history for ReAct loop
+        # Include summary of previous actions for context
+        history_context = self.memory.get_full_context()
+        context_prompt = f"\nPrevious Actions Context:\n{history_context}\n" if history_context else ""
+
         messages = [
-            {"role": "system", "content": f"{EXECUTOR_SYSTEM}\n{TOOL_FORMAT}"},
-            {"role": "user", "content": f"Task: {step['description']}\nHint: {step.get('tool_hint', '')}"}
+            Message(role="system", content=f"{EXECUTOR_SYSTEM}\n{TOOL_FORMAT}"),
+            Message(role="user", content=f"{context_prompt}Current Task: {step['description']}\nHint: {step.get('tool_hint', '')}")
         ]
 
         step_done = False
@@ -45,12 +67,13 @@ class Executor:
 
         while not step_done and steps_taken < max_retries:
             response_full = ""
-            for chunk in self.client.chat(messages, stream=True):
+            config = GenerationConfig(stream=True)
+            async for chunk in self.provider.generate(messages, config):
                  response_full += chunk
                  yield chunk # Yield tokens for UI streaming
 
             self.memory.add_step("EXECUTOR_REASONING", response_full)
-            messages.append({"role": "assistant", "content": response_full})
+            messages.append(Message(role="assistant", content=response_full))
 
             # Check for <tool> blocks
             tool_calls = re.findall(r"<tool>(.*?)</tool>", response_full, re.DOTALL)
@@ -71,7 +94,7 @@ class Executor:
                            if result:
                                 result_str = f"Success: {result.success}\nOutput: {result.output}\nError: {result.error}"
                                 self.memory.add_step("TOOL_RESULT", {"tool": tool_name, "args": tool_args, "result": result_str})
-                                messages.append({"role": "user", "content": f"Observation from {tool_name}: {result_str}"})
+                                messages.append(Message(role="user", content=f"Observation from {tool_name}: {result_str}"))
 
                                 # Record stats
                                 if result.success:
@@ -81,9 +104,9 @@ class Executor:
                                 else:
                                      self.memory.record_error(result.error)
                            else:
-                                messages.append({"role": "user", "content": f"Error: Tool '{tool_name}' not found."})
+                                messages.append(Message(role="user", content=f"Error: Tool '{tool_name}' not found."))
                       except json.JSONDecodeError as e:
-                           messages.append({"role": "user", "content": f"Error parsing tool call JSON: {str(e)}"})
+                           messages.append(Message(role="user", content=f"Error parsing tool call JSON: {str(e)}"))
 
             # Check for <finished> tag
             finished_match = re.search(r"<finished>(.*?)</finished>", response_full, re.DOTALL)
@@ -95,7 +118,16 @@ class Executor:
 
         yield f"\n[Step Completed: {final_summary or 'Done'}]\n"
 
-    def run(self, task: str) -> Generator[str, None, None]:
+    async def run(self, task: str) -> AsyncIterator[str]:
         # Wrapper for running a single task string
         step = {"description": task, "tool_hint": ""}
-        yield from self.execute_step(step)
+        async for chunk in self.execute_step(step):
+             yield chunk
+
+    async def execute_parallel(self, steps: List[Dict[str, Any]]) -> AsyncIterator[str]:
+        # In a real implementation, we'd use concurrent.futures
+        # For this CLI, we yield sequentially but mark it as a parallel batch
+        yield "[Starting Parallel Execution Batch]\n"
+        for step in steps:
+             async for chunk in self.execute_step(step):
+                  yield chunk

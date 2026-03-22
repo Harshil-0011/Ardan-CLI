@@ -67,10 +67,20 @@ class MCPManager:
         for name, cfg in mcp_config.items():
             server = MCPServer(name, cfg["command"], cfg.get("args", []))
             self.servers[name] = server
-            # For simplicity, we assume we know which tools are on which server
-            # or we would perform a 'tools/list' call here.
-            for tool_name in cfg.get("tools", []):
-                self.tools[tool_name] = name
+
+            # Attempt to discover tools from the server
+            try:
+                server.start()
+                # Request tool list
+                request = {"jsonrpc": "2.0", "id": 0, "method": "tools/list", "params": {}}
+                server.process.stdin.write(json.dumps(request) + "\n")
+                response = json.loads(server.process.stdout.readline())
+                for tool in response.get("result", {}).get("tools", []):
+                     self.tools[tool["name"]] = name
+            except:
+                # Fallback to config-defined tools if discovery fails
+                for tool_name in cfg.get("tools", []):
+                    self.tools[tool_name] = name
 
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Optional[ToolResult]:
         server_name = self.tools.get(tool_name)

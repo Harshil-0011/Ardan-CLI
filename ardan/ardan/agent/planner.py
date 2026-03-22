@@ -1,15 +1,22 @@
 import json
 from typing import List, Dict, Any
-from ardan.ollama.client import OllamaClient
+from ardan.agent.messages import Message, GenerationConfig
 from ardan.ollama.prompts import PLANNER_SYSTEM
 
 class Planner:
-    def __init__(self, client: OllamaClient):
-        self.client = client
+    def __init__(self, provider: Any):
+        self.provider = provider
 
-    def create_plan(self, prompt: str) -> List[Dict[str, Any]]:
+    async def create_plan(self, prompt: str) -> List[Dict[str, Any]]:
         # Using generate with system prompt for planner
-        response = self.client.generate(prompt, system=PLANNER_SYSTEM, stream=False)
+        msgs = [
+             Message(role="system", content=PLANNER_SYSTEM),
+             Message(role="user", content=prompt)
+        ]
+        config = GenerationConfig(stream=False)
+        response = ""
+        async for chunk in self.provider.generate(msgs, config):
+             response += chunk
 
         # Clean response if it contains anything outside the JSON array
         # Simple heuristic: find the first [ and the last ]

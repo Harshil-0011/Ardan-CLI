@@ -1,15 +1,15 @@
 import json
 from typing import Dict, Any, List, Optional
-from ardan.ollama.client import OllamaClient
+from ardan.agent.messages import Message, GenerationConfig
 from ardan.ollama.prompts import REVIEWER_SYSTEM
 from ardan.agent.memory import Memory
 
 class Reviewer:
-    def __init__(self, client: OllamaClient, memory: Memory):
-        self.client = client
+    def __init__(self, provider: Any, memory: Memory):
+        self.provider = provider
         self.memory = memory
 
-    def review_work(self, task: str) -> Optional[List[Dict[str, Any]]]:
+    async def review_work(self, task: str) -> Optional[List[Dict[str, Any]]]:
         # Construct summary of work for reviewer
         context = self.memory.get_full_context()
         files_created = ", ".join(self.memory.files_created)
@@ -28,7 +28,14 @@ class Reviewer:
         Review the work and determine if it's complete and correct according to the original task.
         """
 
-        response = self.client.generate(prompt, system=REVIEWER_SYSTEM, stream=False)
+        msgs = [
+             Message(role="system", content=REVIEWER_SYSTEM),
+             Message(role="user", content=prompt)
+        ]
+        config = GenerationConfig(stream=False)
+        response = ""
+        async for chunk in self.provider.generate(msgs, config):
+             response += chunk
 
         if "PASSED" in response:
             return None

@@ -56,7 +56,7 @@ class Memory:
              context_parts.append(f"[{step['type']}] {step['content']}")
         return "\n".join(context_parts)
 
-    def summarize(self, client: Any):
+    async def summarize(self, provider: Any):
         """Summarize the current history using the LLM to keep context window manageable."""
         if not self.history:
             return
@@ -64,7 +64,15 @@ class Memory:
         context = self.get_full_context()
         prompt = f"Summarize the following agent history into a concise summary that preserves all key actions, decisions, and findings:\n\n{context}"
 
-        summary = client.generate(prompt, system="You are a helpful assistant that summarizes technical logs.", stream=False)
+        from ardan.agent.messages import Message, GenerationConfig
+        msgs = [
+             Message(role="system", content="You are a helpful assistant that summarizes technical logs."),
+             Message(role="user", content=prompt)
+        ]
+        config = GenerationConfig(stream=False)
+        summary = ""
+        async for chunk in provider.generate(msgs, config):
+             summary += chunk
 
         # Reset history to a single summary step
         self.history = [{

@@ -1,15 +1,62 @@
-ollama:
-  base_url: http://localhost:11434
-  model: codellama:13b
-  temperature: 0.2
-  num_ctx: 8192
-  stream: true
+ardan:
+  default_provider: ollama
+
+providers:
+  ollama:
+    base_url: http://localhost:11434
+    model: codellama:13b
+    temperature: 0.2
+    num_ctx: 8192
+    stream: true
+
+  anthropic:
+    model: claude-3-5-sonnet-latest
+    temperature: 0.2
+    max_tokens: 8096
+    stream: true
+
+  google:
+    model: gemini-2.0-flash
+    temperature: 0.2
+    max_tokens: 8096
+    stream: true
+
+  openai:
+    model: gpt-4o
+    temperature: 0.2
+    max_tokens: 8096
+    stream: true
+
+  mistral:
+    model: codestral-latest
+    temperature: 0.2
+    max_tokens: 8096
+    stream: true
+
+  groq:
+    model: llama-3.3-70b-versatile
+    temperature: 0.2
+    max_tokens: 8096
+    stream: true
+
+  openrouter:
+    model: deepseek/deepseek-coder-v2
+    temperature: 0.2
+    max_tokens: 8096
+    stream: true
+    site_url: https://github.com/ardan-cli
+    app_name: Ardan
 
 agent:
   max_steps: 50
   auto_confirm: false
   workspace: ./ardan-output
+  auto_failover: true
+  multi_pass_review: true
+  auto_fix_errors: true
 
 ui:
   show_raw_llm_output: false
+  show_provider_badge: true
+  show_tokens_per_second: true
   theme: dark

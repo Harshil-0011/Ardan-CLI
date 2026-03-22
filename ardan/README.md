@@ -1,131 +1,83 @@
-# Ardan: Autonomous Coding Agent CLI
+# Ardan: The World's Most Powerful Autonomous Coding Agent CLI
 
-Ardan is a powerful, local-first coding agent that leverages [Ollama](https://ollama.com/) to build complete software systems from simple natural language prompts. It handles the entire lifecycle: planning, execution, and review, all while keeping you in the loop with a beautiful, real-time terminal interface.
-
----
-
-## 🚀 Key Features
-
--   **🧠 Autonomous Problem Solving**: Uses a ReAct (Reasoning + Acting) loop to break down complex tasks into actionable steps.
--   **🔌 Deep Tool Integration**: Can read/write files, execute shell commands, lint/format code, and search the web.
--   **🔌 MCP Support**: Extend capabilities with Model Context Protocol (MCP) servers.
--   **🏠 100% Local & Private**: Powered by Ollama. Your code never leaves your machine. No API keys, no subscriptions.
--   **✨ Rich Terminal UI**: Experience real-time progress with syntax-highlighted code previews, spinners, and task tables.
--   **♻️ Self-Correction**: Includes a reviewer phase that identifies bugs and missing features, triggering an automatic fix cycle.
--   **📂 Context Management**: Automatically summarizes long history to maintain coherence within LLM context windows.
+Ardan is a high-performance, multi-provider coding agent that outperforms all competitors in intelligence, flexibility, and developer experience.
 
 ---
 
-## 🏛️ Project Architecture
+## 🚀 Why Ardan?
 
-Ardan is built with a modular, extensible architecture:
-
--   `agent/`: The brain. Orchestrates the **Planner**, **Executor**, **Reviewer**, and **Memory** modules.
--   `tools/`: The hands. A growing collection of specialized utilities:
-    -   `file_tools`: Robust file operations (read, write, append, search/replace).
-    -   `shell_tools`: Secure command execution and temporary script running.
-    -   `code_tools`: Python-specific linting (ruff/py_compile) and formatting (black).
-    -   `web_tools`: Real-time web search via DuckDuckGo scraping (no API needed).
--   `ollama/`: The bridge. Handles communication with your local Ollama instance with streaming and retry logic.
--   `ui/`: The face. A `rich`-powered console interface for a professional CLI experience.
--   `config/`: The control center. Manage models, workspaces, and agent behavior via `config.yaml` or env vars.
+-   **🧠 Multi-Provider Intelligence**: Seamlessly switch between Anthropic (Claude), Google (Gemini), OpenAI (GPT-4o), Mistral, Groq, and OpenRouter.
+-   **⚡ Unmatched Speed**: Real-time tokens-per-second display, especially on Groq.
+-   **🔌 Elite Toolset**: Full control over Git, Docker, Testing, Dependencies, and Architecture Diagrams.
+-   **🛡️ Secure Credentials**: API keys are stored encrypted at rest with machine-derived keys.
+-   **✨ Master-Level Agent Loop**: Autonomous planning, execution with self-correction, and senior-level code review.
 
 ---
 
-## 🛠️ Installation
+## 🛠️ Multi-Provider Support
 
-1.  **Prerequisites**:
-    -   Python 3.11+
-    -   [Ollama](https://ollama.com/) installed and running.
-2.  **Clone and Install**:
+Ardan is provider-agnostic. Use the best model for your task:
+
+| Provider | Recommended Model | Best For... |
+| :--- | :--- | :--- |
+| **Anthropic** | `claude-3-5-sonnet` | Complex logic, reasoning |
+| **Google** | `gemini-2.0-flash` | Speed, large context (1M+ tokens) |
+| **OpenAI** | `gpt-4o` | General purpose, tool accuracy |
+| **Mistral** | `codestral-latest` | Dedicated code generation |
+| **Groq** | `llama-3.3-70b` | Extreme performance, real-time TPS |
+| **Ollama** | `codellama:13b` | 100% local, no-cost experimentation |
+
+---
+
+## 📋 Installation
+
+1.  **Prerequisites**: Python 3.11+
+2.  **Install Ardan**:
     ```bash
     git clone https://github.com/yourusername/ardan.git
     cd ardan
     pip install -e .
     ```
-3.  **Pull the Recommended Model**:
+3.  **Optional: Install Provider SDKs**:
     ```bash
-    ollama pull codellama:13b
+    pip install "ardan[all]"  # Installs all provider SDKs
     ```
 
 ---
 
-## 📖 Usage Examples
+## 🔐 Credentials Setup
 
-### Build a Full-Stack Application
+Securely store your API keys:
 ```bash
-ardan run "Build a FastAPI backend with SQLite and JWT auth, plus a React frontend with Tailwind CSS. Include a docker-compose.yml to run both."
-```
-
-### Create a CLI Tool
-```bash
-ardan run "Create a Python CLI tool that monitors a folder and auto-compresses new images using Pillow. Add a --verbose flag."
-```
-
-### override Defaults
-```bash
-# Use a different model
-ardan run "Build a simple snake game in Python" --model llama3
-
-# specify a custom workspace
-ardan run "Create a web scraper for news sites" --workspace ./my-scrapers
-
-# Fully autonomous mode (skip confirmations)
-ardan run "Refactor the current project to use async/await" --auto
-```
-
-### Interactive Chat Mode
-Ardan features a powerful interactive REPL built with `prompt_toolkit`:
-```bash
-ardan chat
-```
-- **Slash Commands**: `/help`, `/clear`, `/save`, `/load`, `/rewind`, `/stats`, `/plan`, `/exit`.
-- **Autocompletion**: Tab-complete commands and file paths.
-- **Context Injection**: Use `@path/to/file` or `@path/to/image.png` directly in your chat.
-- **Checkpointing**: Save and resume complex sessions.
-
-### Plan Mode
-Break down complex tasks and execute them systematically:
-```bash
-> /plan "Implement a distributed task queue with Redis and Python"
+ardan keys set anthropic YOUR_API_KEY
+ardan keys set openai YOUR_API_KEY
+ardan keys test google
 ```
 
 ---
 
-## 🔧 Advanced Features
+## 📖 Power Usage
 
-- **Multimodal capabilities**: Ardan can "see" images. Just mention them with `@image.png`.
-- **Project Context (ARDAN.md)**: Add a `ARDAN.md` file to your project root to provide persistent, project-specific instructions to the agent.
-- **Codebase Investigation**: Ardan can perform deep analysis of your project structure using the `investigate_codebase` tool.
-- **Non-Interactive Scripting**: Integrate Ardan into your workflows with `--output-format json` or `stream-json`.
+### Run with Specific Provider
+```bash
+ardan run "Build a React + FastAPI app" --provider anthropic --model claude-3-5-sonnet
+```
 
----
+### Advanced Chat Mode
+```bash
+ardan chat --provider groq --model llama-3.3-70b-versatile
+```
 
-## ⚙️ Configuration
-
-Ardan looks for `config.yaml` in its project root. You can also use environment variables:
-
-| Variable | Config Key | Default |
-| :--- | :--- | :--- |
-| `ARDAN_MODEL` | `ollama.model` | `codellama:13b` |
-| `ARDAN_WORKSPACE` | `agent.workspace` | `./ardan-output` |
-| `ARDAN_MAX_STEPS` | `agent.max_steps` | `50` |
-| `ARDAN_OLLAMA_BASE_URL` | `ollama.base_url` | `http://localhost:11434` |
+### New Advanced Tools
+-   **Git**: `git_init`, `git_commit`, `git_branch`
+-   **Docker**: `docker_build`, `docker_run`, `generate_dockerfile`
+-   **Quality**: `run_tests`, `scan_deps`, `auto_install_deps`
+-   **Architecture**: `generate_ascii_diagram`
 
 ---
 
-## 🛠️ Adding Custom Tools
+## ❓ FAQ
 
-Extending Ardan is easy:
-1.  Add your function in a new or existing file in `ardan/tools/`.
-2.  Ensure it returns a `ToolResult(success: bool, output: str, error: str)`.
-3.  Register the tool in `ardan/agent/executor.py` within the `self.tools` dictionary.
-4.  Update the `EXECUTOR_SYSTEM` prompt in `ardan/ollama/prompts.py` so the agent knows how to use it.
-
----
-
-## ❓ Troubleshooting
-
--   **Ollama Connection Refused**: Ensure Ollama is running (`ollama serve`).
--   **Model Not Found**: Ardan will try to use `codellama:13b` by default. If you don't have it, run `ollama pull codellama:13b` or override it with `--model`.
--   **Tool Failures**: If a command fails (e.g., `ruff` not found), Ardan will attempt to use a fallback or report the error and try a different approach.
+-   **Failover**: If your primary provider is rate-limited, Ardan can automatically failover to a backup.
+-   **Security**: Keys are encrypted using your machine's unique identifier.
+-   **Plan Mode**: Use `/plan` in chat to break down massive features into structured execution steps.
