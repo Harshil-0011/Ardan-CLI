@@ -1,0 +1,7 @@
+typer[all]
+rich
+httpx
+pyyaml
+ruff
+black
+beautifulsoup4

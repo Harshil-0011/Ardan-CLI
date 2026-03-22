@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ardan"
+version = "0.1.0"
+description = "Autonomous coding agent CLI using Ollama"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "typer[all]",
+    "rich",
+    "httpx",
+    "pyyaml",
+    "ruff",
+    "black",
+    "beautifulsoup4",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[project.scripts]
+ardan = "ardan.main:app"
