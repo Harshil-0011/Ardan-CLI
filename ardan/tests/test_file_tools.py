@@ -1,6 +1,6 @@
 import unittest
-import os
 from ardan.tools.file_tools import write_file, read_file, delete_file
+
 
 class TestFileTools(unittest.TestCase):
     def test_write_read_delete(self):
@@ -11,6 +11,7 @@ class TestFileTools(unittest.TestCase):
         res = read_file(path)
         self.assertEqual(res.output, content)
         delete_file(path)
+
 
 if __name__ == "__main__":
     unittest.main()

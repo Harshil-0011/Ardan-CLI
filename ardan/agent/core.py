@@ -5,16 +5,24 @@ from ardan.agent.memory import Memory
 from ardan.agent.planner import Planner
 from ardan.agent.executor import Executor
 from ardan.agent.reviewer import Reviewer
-from ardan.providers.registry import get_provider_instance, detect_active_provider, failover_generate
+from ardan.providers.registry import get_provider_instance, detect_active_provider
 from ardan.agent.messages import Message, GenerationConfig
 
+
 class AgentCore:
-    def __init__(self, settings: Settings, provider_override: Optional[str] = None, model_override: Optional[str] = None, workspace_override: Optional[str] = None, session_id: Optional[int] = None):
+    def __init__(
+        self,
+        settings: Settings,
+        provider_override: Optional[str] = None,
+        model_override: Optional[str] = None,
+        workspace_override: Optional[str] = None,
+        session_id: Optional[int] = None,
+    ):
         self.settings = settings
         self.provider_name = detect_active_provider(
             cli_flag=provider_override,
             env_var=os.getenv("ARDAN_PROVIDER"),
-            config_val=settings.get("ardan", "default_provider", "ollama")
+            config_val=settings.get("ardan", "default_provider", "ollama"),
         )
         self.workspace = workspace_override or settings.agent_workspace
         os.makedirs(self.workspace, exist_ok=True)
@@ -28,7 +36,9 @@ class AgentCore:
         self.executor = Executor(self.provider, self.memory, settings=settings.config)
         self.reviewer = Reviewer(self.provider, self.memory)
 
-    async def build_system(self, prompt: str, auto: bool = False) -> AsyncIterator[Dict[str, Any]]:
+    async def build_system(
+        self, prompt: str, auto: bool = False
+    ) -> AsyncIterator[Dict[str, Any]]:
         # 1. PLAN
         yield {"status": "PLANNING", "message": "Analyzing request..."}
         plan = await self.planner.create_plan(prompt)
@@ -37,30 +47,41 @@ class AgentCore:
         # 2. EXECUTE with dependency management
         completed = set()
         while len(completed) < len(plan):
-             ready_steps = [s for s in plan if s["id"] not in completed and all(dep in completed for dep in s.get("depends_on", []))]
-             if not ready_steps: break # Circular dependency or error
+            ready_steps = [
+                s
+                for s in plan
+                if s["id"] not in completed
+                and all(dep in completed for dep in s.get("depends_on", []))
+            ]
+            if not ready_steps:
+                break  # Circular dependency or error
 
-             if len(ready_steps) > 1:
-                  yield {"status": "EXECUTING_PARALLEL", "steps": ready_steps}
-                  async for chunk in self.executor.run_parallel(ready_steps):
-                       yield {"status": "STEP_PROGRESS", "chunk": chunk}
-                  for s in ready_steps: completed.add(s["id"])
-             else:
-                  step = ready_steps[0]
-                  yield {"status": "STEP_START", "step": step}
-                  async for chunk in self.executor.execute_step(step):
-                       yield {"status": "STEP_PROGRESS", "chunk": chunk}
-                  completed.add(step["id"])
-                  yield {"status": "STEP_COMPLETE", "step": step}
+            if len(ready_steps) > 1:
+                yield {"status": "EXECUTING_PARALLEL", "steps": ready_steps}
+                async for chunk in self.executor.run_parallel(ready_steps):
+                    yield {"status": "STEP_PROGRESS", "chunk": chunk}
+                for s in ready_steps:
+                    completed.add(s["id"])
+            else:
+                step = ready_steps[0]
+                yield {"status": "STEP_START", "step": step}
+                async for chunk in self.executor.execute_step(step):
+                    yield {"status": "STEP_PROGRESS", "chunk": chunk}
+                completed.add(step["id"])
+                yield {"status": "STEP_COMPLETE", "step": step}
 
         # 3. REVIEW (Self-correction)
         yield {"status": "REVIEWING", "message": "Performing senior code review..."}
         fix_plan = await self.reviewer.review_work(prompt)
         if fix_plan:
-            yield {"status": "FIXING", "message": "Applying corrections...", "fix_plan": fix_plan}
+            yield {
+                "status": "FIXING",
+                "message": "Applying corrections...",
+                "fix_plan": fix_plan,
+            }
             for step in fix_plan:
-                 async for chunk in self.executor.execute_step(step):
-                      yield {"status": "FIX_PROGRESS", "chunk": chunk}
+                async for chunk in self.executor.execute_step(step):
+                    yield {"status": "FIX_PROGRESS", "chunk": chunk}
 
         # 4. CONFIDENCE & SUGGEST
         yield {"status": "FINALIZING", "message": "Finalizing build..."}
@@ -76,10 +97,10 @@ class AgentCore:
             "message": "System built successfully!",
             "stats": {
                 "files_created": self.memory.files_created,
-                "commands_run": self.memory.commands_run
+                "commands_run": self.memory.commands_run,
             },
             "suggestions": suggestions,
-            "confidence": confidence
+            "confidence": confidence,
         }
 
     async def _generate_suggestions(self) -> List[str]:
@@ -88,9 +109,13 @@ class AgentCore:
         msgs = [Message(role="user", content=prompt)]
         res = ""
         async for chunk in self.provider.generate(msgs, GenerationConfig(stream=False)):
-             res += chunk
+            res += chunk
         # Simple split by bullet points or newlines
-        return [s.strip() for s in res.split("\n") if s.strip() and (s.strip()[0].isdigit() or s.strip()[0] == "•")][:3]
+        return [
+            s.strip()
+            for s in res.split("\n")
+            if s.strip() and (s.strip()[0].isdigit() or s.strip()[0] == "•")
+        ][:3]
 
     async def chat(self, user_input: str) -> AsyncIterator[str]:
         # Simple chat implementation

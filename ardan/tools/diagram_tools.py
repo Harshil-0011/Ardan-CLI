@@ -1,6 +1,7 @@
 import os
 from .file_tools import ToolResult
 
+
 def generate_architecture_diagram(project_path: str) -> ToolResult:
     """Produces an ASCII architecture diagram."""
     try:
@@ -10,7 +11,9 @@ def generate_architecture_diagram(project_path: str) -> ToolResult:
         diagram += "===================\n\n"
         diagram += f"Root: {os.path.basename(project_path)}\n"
         for item in structure:
-            if os.path.isdir(os.path.join(project_path, item)) and not item.startswith("."):
+            if os.path.isdir(os.path.join(project_path, item)) and not item.startswith(
+                "."
+            ):
                 diagram += f"  ├── [{item}/]\n"
                 subitems = os.listdir(os.path.join(project_path, item))[:3]
                 for si in subitems:

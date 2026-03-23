@@ -26,11 +26,12 @@ def fetch_url(url: str) -> ToolResult:
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             # drop blank lines
             text = "\n".join(chunk for chunk in chunks if chunk)
-            return ToolResult(True, text[:10000]) # Limit output
+            return ToolResult(True, text[:10000])  # Limit output
         else:
             return ToolResult(True, response.text[:10000])
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def search_web(query: str) -> ToolResult:
     """Scrape DuckDuckGo results."""
@@ -43,6 +44,7 @@ def search_web(query: str) -> ToolResult:
             res.raise_for_status()
             # Simple scrape
             from bs4 import BeautifulSoup
+
             soup = BeautifulSoup(res.text, "html.parser")
             results = [a.text for a in soup.select(".result__a")[:5]]
             return ToolResult(True, "\n".join(results), "")

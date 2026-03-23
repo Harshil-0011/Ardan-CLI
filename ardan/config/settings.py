@@ -3,6 +3,7 @@ import yaml
 from pathlib import Path
 from typing import Any, Dict
 
+
 class Settings:
     def __init__(self, config_path: str = None):
         if config_path is None:
@@ -23,25 +24,39 @@ class Settings:
     def _override_from_env(self):
         # Env var override for ollama
         if "ARDAN_OLLAMA_BASE_URL" in os.environ:
-            self.config.setdefault("ollama", {})["base_url"] = os.getenv("ARDAN_OLLAMA_BASE_URL")
+            self.config.setdefault("ollama", {})["base_url"] = os.getenv(
+                "ARDAN_OLLAMA_BASE_URL"
+            )
         if "ARDAN_MODEL" in os.environ:
             self.config.setdefault("ollama", {})["model"] = os.getenv("ARDAN_MODEL")
         if "ARDAN_TEMPERATURE" in os.environ:
-            self.config.setdefault("ollama", {})["temperature"] = float(os.getenv("ARDAN_TEMPERATURE"))
+            self.config.setdefault("ollama", {})["temperature"] = float(
+                os.getenv("ARDAN_TEMPERATURE")
+            )
         if "ARDAN_NUM_CTX" in os.environ:
-            self.config.setdefault("ollama", {})["num_ctx"] = int(os.getenv("ARDAN_NUM_CTX"))
+            self.config.setdefault("ollama", {})["num_ctx"] = int(
+                os.getenv("ARDAN_NUM_CTX")
+            )
 
         # Env var override for agent
         if "ARDAN_MAX_STEPS" in os.environ:
-            self.config.setdefault("agent", {})["max_steps"] = int(os.getenv("ARDAN_MAX_STEPS"))
+            self.config.setdefault("agent", {})["max_steps"] = int(
+                os.getenv("ARDAN_MAX_STEPS")
+            )
         if "ARDAN_AUTO_CONFIRM" in os.environ:
-            self.config.setdefault("agent", {})["auto_confirm"] = os.getenv("ARDAN_AUTO_CONFIRM").lower() == "true"
+            self.config.setdefault("agent", {})["auto_confirm"] = (
+                os.getenv("ARDAN_AUTO_CONFIRM").lower() == "true"
+            )
         if "ARDAN_WORKSPACE" in os.environ:
-            self.config.setdefault("agent", {})["workspace"] = os.getenv("ARDAN_WORKSPACE")
+            self.config.setdefault("agent", {})["workspace"] = os.getenv(
+                "ARDAN_WORKSPACE"
+            )
 
         # Env var override for ui
         if "ARDAN_SHOW_RAW_LLM_OUTPUT" in os.environ:
-            self.config.setdefault("ui", {})["show_raw_llm_output"] = os.getenv("ARDAN_SHOW_RAW_LLM_OUTPUT").lower() == "true"
+            self.config.setdefault("ui", {})["show_raw_llm_output"] = (
+                os.getenv("ARDAN_SHOW_RAW_LLM_OUTPUT").lower() == "true"
+            )
         if "ARDAN_THEME" in os.environ:
             self.config.setdefault("ui", {})["theme"] = os.getenv("ARDAN_THEME")
 
@@ -97,5 +112,6 @@ class Settings:
     @property
     def ui_theme(self) -> str:
         return self.get("ui", "theme", "dark")
+
 
 settings = Settings()

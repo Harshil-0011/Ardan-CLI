@@ -1,7 +1,6 @@
 import typer
 import asyncio
-import os
-from typing import Optional, List
+from typing import Optional
 from ardan.agent.core import AgentCore
 from ardan.config.settings import settings
 from ardan.ui.console import ArdanConsole
@@ -11,6 +10,7 @@ from rich.prompt import Confirm
 app = typer.Typer(name="ardan", help="The World's Most Powerful Coding Agent CLI")
 console_ui = ArdanConsole()
 
+
 @app.command()
 def run(
     prompt: str = typer.Argument(..., help="What do you want to build?"),
@@ -18,38 +18,50 @@ def run(
     model: Optional[str] = typer.Option(None, "--model", "-m"),
     workspace: Optional[str] = typer.Option(None, "--workspace", "-w"),
     auto: bool = typer.Option(False, "--auto"),
-    watch: bool = typer.Option(False, "--watch")
+    watch: bool = typer.Option(False, "--watch"),
 ):
     """Main entrypoint for building software systems."""
-    agent = AgentCore(settings, provider_override=provider, model_override=model, workspace_override=workspace)
+    agent = AgentCore(
+        settings,
+        provider_override=provider,
+        model_override=model,
+        workspace_override=workspace,
+    )
 
     async def _run():
         if watch:
-             from watchdog.observers import Observer
-             from watchdog.events import FileSystemEventHandler
-             class BuildHandler(FileSystemEventHandler):
-                  def __init__(self, agent_instance, prompt_text):
-                       self.agent = agent_instance
-                       self.prompt = prompt_text
-                  def on_modified(self, event):
-                       if not event.is_directory:
-                            typer.echo(f"Change detected in {event.src_path}. Re-building...")
-                            # Trigger non-recursive build logic
-                            asyncio.run(self._trigger_build())
+            from watchdog.observers import Observer
+            from watchdog.events import FileSystemEventHandler
 
-                  async def _trigger_build(self):
-                       async for update in self.agent.build_system(self.prompt):
-                            pass
+            class BuildHandler(FileSystemEventHandler):
+                def __init__(self, agent_instance, prompt_text):
+                    self.agent = agent_instance
+                    self.prompt = prompt_text
 
-             observer = Observer()
-             observer.schedule(BuildHandler(agent, prompt), agent.workspace, recursive=True)
-             observer.start()
-             try:
-                  while True: await asyncio.sleep(1)
-             except KeyboardInterrupt:
-                  observer.stop()
-             observer.join()
-             return
+                def on_modified(self, event):
+                    if not event.is_directory:
+                        typer.echo(
+                            f"Change detected in {event.src_path}. Re-building..."
+                        )
+                        # Trigger non-recursive build logic
+                        asyncio.run(self._trigger_build())
+
+                async def _trigger_build(self):
+                    async for update in self.agent.build_system(self.prompt):
+                        pass
+
+            observer = Observer()
+            observer.schedule(
+                BuildHandler(agent, prompt), agent.workspace, recursive=True
+            )
+            observer.start()
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                observer.stop()
+            observer.join()
+            return
 
         console_ui.print_banner()
         console_ui.print_provider_badge(agent.provider_name, agent.model)
@@ -59,62 +71,95 @@ def run(
                 status = update.get("status")
                 if status == "PLAN_READY":
                     console_ui.display_plan(update["plan"])
-                    if not auto and not Confirm.ask("Proceed?"): return
+                    if not auto and not Confirm.ask("Proceed?"):
+                        return
                 elif status == "STEP_START":
                     console_ui.print_step_start(update["step"])
                 elif status == "STEP_PROGRESS":
-                    print(update["chunk"], end="", flush=True)
+                    console_ui.console.print(update["chunk"], end="")
                 elif status == "DONE":
                     console_ui.print_success(update["message"])
                     console_ui.display_summary(update)
+                    console_ui.print_next_steps(agent.workspace)
 
     asyncio.run(_run())
+
 
 @app.command()
 def chat():
     """Interactive AI developer REPL."""
+
     async def _chat():
         console_ui.print_banner()
         agent = AgentCore(settings)
         console_ui.print_provider_badge(agent.provider_name, agent.model)
         while True:
             user_input = typer.prompt("You")
-            if user_input.lower() in ["exit", "quit"]: break
+            if user_input.lower() in ["exit", "quit"]:
+                break
             async for chunk in agent.chat(user_input):
-                print(chunk, end="", flush=True)
-            print()
+                console_ui.console.print(chunk, end="")
+            console_ui.console.print()
+
     asyncio.run(_chat())
+
 
 @app.command()
 def models(provider: Optional[str] = None, all: bool = False):
     """List available AI models."""
+
     async def _models():
-        agent = AgentCore(settings, provider_override=provider)
-        models_list = await agent.provider.list_models()
-        for m in models_list:
-            typer.echo(f"- {m.id} ({m.name})")
+        if all:
+            from ardan.providers.registry import PROVIDERS
+
+            for p_name in PROVIDERS:
+                agent = AgentCore(settings, provider_override=p_name)
+                models_list = await agent.provider.list_models()
+                if models_list:
+                    console_ui.display_models_table(p_name, models_list)
+        else:
+            agent = AgentCore(settings, provider_override=provider)
+            try:
+                models_list = await agent.provider.list_models()
+                if models_list:
+                    console_ui.display_models_table(agent.provider_name, models_list)
+                else:
+                    console_ui.console.print(
+                        f"[yellow]No models found for {agent.provider_name}.[/yellow]"
+                    )
+            except Exception as e:
+                console_ui.print_error(f"Failed to list models: {str(e)}")
+
     asyncio.run(_models())
+
 
 @app.command()
 def keys(action: str, provider: str, value: Optional[str] = None):
     """Manage API keys securely."""
     if action == "set":
-        credentials_manager.set(provider, value or typer.prompt(f"Enter key for {provider}", hide_input=True))
+        credentials_manager.set(
+            provider,
+            value or typer.prompt(f"Enter key for {provider}", hide_input=True),
+        )
     elif action == "list":
         typer.echo(credentials_manager.list_masked())
     elif action == "remove":
         credentials_manager.remove(provider)
 
+
 @app.command()
 def recommend(task: str):
     """Recommend the best provider and model for a specific task."""
+
     async def _rec():
         agent = AgentCore(settings)
         prompt = f"Recommend the best AI provider and model for this task: '{task}'. Consider Anthropic, Google, OpenAI, Mistral, Groq, OpenRouter, and Ollama. Format as a table with columns: Provider, Model, Strength, Cost."
         async for chunk in agent.chat(prompt):
-             print(chunk, end="", flush=True)
-        print()
+            console_ui.console.print(chunk, end="")
+        console_ui.console.print()
+
     asyncio.run(_rec())
+
 
 @app.command()
 def diff():
@@ -122,12 +167,14 @@ def diff():
     agent = AgentCore(settings)
     typer.echo(agent.memory.get_diff())
 
+
 @app.command()
 def undo():
     """Undo file changes."""
     agent = AgentCore(settings)
     count = agent.memory.undo_last_run()
     typer.echo(f"Reverted {count} files.")
+
 
 @app.command()
 def resume():
@@ -137,45 +184,58 @@ def resume():
     # Transition to chat
     chat()
 
+
 @app.command()
 def explain(file: str):
     """Explain a file's contents."""
+
     async def _explain():
         agent = AgentCore(settings)
         async for chunk in agent.chat(f"Explain this file: @{file}"):
-            print(chunk, end="", flush=True)
-        print()
+            console_ui.console.print(chunk, end="")
+        console_ui.console.print()
+
     asyncio.run(_explain())
+
 
 @app.command()
 def improve(file: str):
     """Improve a file's code."""
+
     async def _improve():
         agent = AgentCore(settings)
         async for update in agent.build_system(f"Improve this file: @{file}"):
             pass
+
     asyncio.run(_improve())
+
 
 @app.command()
 def test():
     """Run tests for the project."""
+
     async def _test():
         agent = AgentCore(settings)
         async for update in agent.build_system("Run all tests and fix failures."):
             pass
+
     asyncio.run(_test())
+
 
 @app.command()
 def config():
     """Show current configuration."""
     typer.echo(settings.config)
 
+
 @app.command()
 def providers():
     """List available providers."""
     from ardan.providers.registry import PROVIDERS
+
     for p in PROVIDERS:
         typer.echo(f"- {p}")
+
 
 if __name__ == "__main__":
     app()

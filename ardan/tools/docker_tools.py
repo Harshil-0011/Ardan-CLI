@@ -2,12 +2,19 @@ import subprocess
 import os
 from .file_tools import ToolResult
 
+
 def docker_build(tag: str, cwd: str = ".") -> ToolResult:
     try:
-        subprocess.run(["docker", "build", "-t", tag, "."], cwd=cwd, check=True, capture_output=True)
+        subprocess.run(
+            ["docker", "build", "-t", tag, "."],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+        )
         return ToolResult(True, f"Built docker image: {tag}", "")
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def docker_run(tag: str) -> ToolResult:
     try:
@@ -16,15 +23,17 @@ def docker_run(tag: str) -> ToolResult:
     except Exception as e:
         return ToolResult(False, "", str(e))
 
+
 def generate_dockerfile(project_path: str) -> ToolResult:
     """Analyzes project and writes an optimal Dockerfile."""
     try:
-        content = "FROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD [\"python\", \"main.py\"]"
+        content = 'FROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ["python", "main.py"]'
         with open(os.path.join(project_path, "Dockerfile"), "w") as f:
             f.write(content)
         return ToolResult(True, "Dockerfile generated.", "")
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def generate_compose(project_path: str) -> ToolResult:
     """Writes docker-compose.yml."""

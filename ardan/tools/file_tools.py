@@ -1,7 +1,7 @@
 import os
 import glob
 from dataclasses import dataclass
-from typing import Optional
+
 
 @dataclass
 class ToolResult:
@@ -9,12 +9,14 @@ class ToolResult:
     output: str
     error: str = ""
 
+
 def read_file(path: str) -> ToolResult:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return ToolResult(True, f.read())
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def write_file(path: str, content: str) -> ToolResult:
     try:
@@ -27,6 +29,7 @@ def write_file(path: str, content: str) -> ToolResult:
     except Exception as e:
         return ToolResult(False, "", str(e))
 
+
 def append_file(path: str, content: str) -> ToolResult:
     try:
         with open(path, "a", encoding="utf-8") as f:
@@ -34,6 +37,7 @@ def append_file(path: str, content: str) -> ToolResult:
         return ToolResult(True, f"Content appended to {path}")
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def list_files(directory: str, pattern: str = "*") -> ToolResult:
     try:
@@ -49,6 +53,7 @@ def list_files(directory: str, pattern: str = "*") -> ToolResult:
     except Exception as e:
         return ToolResult(False, "", str(e))
 
+
 def delete_file(path: str) -> ToolResult:
     try:
         if os.path.exists(path):
@@ -58,6 +63,7 @@ def delete_file(path: str) -> ToolResult:
             return ToolResult(False, "", f"File {path} does not exist.")
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def search_and_replace(path: str, old: str, new: str) -> ToolResult:
     try:

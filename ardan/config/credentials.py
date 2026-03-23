@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
 
+
 class CredentialsManager:
     def __init__(self):
         self.config_dir = Path.home() / ".ardan"
@@ -36,7 +37,7 @@ class CredentialsManager:
                     if encrypted_blob:
                         decrypted = self._fernet.decrypt(encrypted_blob.encode())
                         return json.loads(decrypted)
-            except:
+            except Exception:
                 return {}
         return {}
 
@@ -63,6 +64,10 @@ class CredentialsManager:
             self._save()
 
     def list_masked(self) -> Dict[str, str]:
-        return {p: f"{k[:4]}...{k[-4:]}" if len(k) > 8 else "***" for p, k in self._credentials.items()}
+        return {
+            p: f"{k[:4]}...{k[-4:]}" if len(k) > 8 else "***"
+            for p, k in self._credentials.items()
+        }
+
 
 credentials_manager = CredentialsManager()

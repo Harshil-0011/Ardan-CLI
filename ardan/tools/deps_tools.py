@@ -1,8 +1,8 @@
 import subprocess
 import os
-import re
 from typing import List
 from .file_tools import ToolResult
+
 
 def scan_imports(directory: str) -> ToolResult:
     """
@@ -11,9 +11,18 @@ def scan_imports(directory: str) -> ToolResult:
     """
     try:
         import ast
+
         imports = set()
         # Exclude directories that don't contain source code to speed up walk
-        exclude_dirs = {'.git', '__pycache__', 'node_modules', 'venv', '.venv', 'dist', 'build'}
+        exclude_dirs = {
+            ".git",
+            "__pycache__",
+            "node_modules",
+            "venv",
+            ".venv",
+            "dist",
+            "build",
+        }
 
         for root, dirs, files in os.walk(directory):
             # Prune directories in-place for faster traversal
@@ -33,15 +42,16 @@ def scan_imports(directory: str) -> ToolResult:
                             for node in ast.walk(tree):
                                 if isinstance(node, ast.Import):
                                     for name in node.names:
-                                        imports.add(name.name.split('.')[0])
+                                        imports.add(name.name.split(".")[0])
                                 elif isinstance(node, ast.ImportFrom):
                                     if node.module:
-                                        imports.add(node.module.split('.')[0])
+                                        imports.add(node.module.split(".")[0])
                     except (UnicodeDecodeError, SyntaxError):
                         continue
         return ToolResult(True, ", ".join(sorted(list(imports))), "")
     except Exception as e:
         return ToolResult(False, "", str(e))
+
 
 def install_missing(packages: List[str]) -> ToolResult:
     try:

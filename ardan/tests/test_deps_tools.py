@@ -2,6 +2,7 @@ import unittest
 import os
 from ardan.tools.deps_tools import scan_imports
 
+
 class TestDepsTools(unittest.TestCase):
     def test_scan_imports(self):
         # Create a dummy python file with imports
@@ -16,6 +17,7 @@ class TestDepsTools(unittest.TestCase):
         self.assertIn("requests", res.output)
 
         os.remove("dummy_imports.py")
+
 
 if __name__ == "__main__":
     unittest.main()
