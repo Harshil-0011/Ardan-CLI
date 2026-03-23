@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional, Generator
 from ardan.ollama.client import OllamaClient
 from ardan.ollama.prompts import EXECUTOR_SYSTEM, TOOL_FORMAT
 from ardan.tools.file_tools import read_file, write_file, append_file, list_files, delete_file, search_and_replace, ToolResult
-from ardan.tools.shell_tools import run_command, run_script
+from ardan.tools.shell_tools import run_command, run_script, compile_c, compile_cpp, run_binary
 from ardan.tools.code_tools import lint_python, format_python, search_in_files, investigate_codebase
 from ardan.tools.web_tools import search_web, fetch_url
 from ardan.tools.git_tools import git_init, git_commit, git_branch
@@ -31,6 +31,9 @@ class Executor:
             "search_and_replace": search_and_replace,
             "run_command": run_command,
             "run_script": run_script,
+            "compile_c": compile_c,
+            "compile_cpp": compile_cpp,
+            "run_binary": run_binary,
             "lint_python": lint_python,
             "format_python": format_python,
             "search_in_files": search_in_files,

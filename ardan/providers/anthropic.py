@@ -1,6 +1,6 @@
 import time
 import json
-from typing import List, Generator, Optional, Any, Dict
+from typing import List, AsyncIterator, Optional, Any, Dict
 from ardan.providers.base import BaseProvider
 from ardan.agent.messages import Message, GenerationConfig, ModelInfo, HealthStatus
 

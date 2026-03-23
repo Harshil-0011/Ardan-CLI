@@ -1,6 +1,7 @@
 import json
 import httpx
 import time
+import asyncio
 from typing import List, AsyncIterator, Dict, Any, Optional
 from ardan.providers.base import BaseProvider
 from ardan.agent.messages import Message, GenerationConfig, ModelInfo, HealthStatus

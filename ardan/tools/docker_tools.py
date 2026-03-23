@@ -17,8 +17,8 @@ def docker_run(tag: str, port_mapping: str = "8080:80") -> ToolResult:
         return ToolResult(False, "", str(e))
 
 def generate_dockerfile(directory: str, language: str = "python") -> ToolResult:
-    """Generate a boilerplate Dockerfile."""
-    docker_content = f"FROM {language}:3.11\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\", \"main.py\"]"
+    """Generate a production-ready Dockerfile."""
+    docker_content = f"FROM {language}:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD [\"python\", \"main.py\"]"
     with open(os.path.join(directory, "Dockerfile"), "w") as f:
          f.write(docker_content)
     return ToolResult(True, "Dockerfile generated.")

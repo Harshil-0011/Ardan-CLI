@@ -92,6 +92,10 @@ class AgentCore:
                  yield {"status": "WARNING", "message": f"Primary provider failed: {str(e)}. Attempting failover..."}
                  # Simple failover to Ollama
                  self.provider = get_provider("ollama")
+                 # Propagate to sub-components
+                 self.planner.provider = self.provider
+                 self.executor.provider = self.provider
+                 self.reviewer.provider = self.provider
                  plan = await self.planner.create_plan(full_prompt)
             else:
                  raise e
