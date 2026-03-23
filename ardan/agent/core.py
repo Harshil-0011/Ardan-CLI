@@ -36,9 +36,21 @@ class AgentCore:
         self.executor = Executor(self.provider, self.memory, settings=settings.config)
         self.reviewer = Reviewer(self.provider, self.memory)
 
-    async def build_system(
-        self, prompt: str, auto: bool = False
-    ) -> AsyncIterator[Dict[str, Any]]:
+    def _warn_uncommitted(self):
+        try:
+             import subprocess
+             res = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+             if res.stdout.strip():
+                  return "[bold yellow]⚠ Warning: Uncommitted git changes detected in workspace.[/bold yellow]"
+        except:
+             pass
+        return None
+
+    async def build_system(self, prompt: str, auto: bool = False) -> AsyncIterator[Dict[str, Any]]:
+        warn = self._warn_uncommitted()
+        if warn:
+             yield {"status": "WARNING", "message": warn}
+
         # 1. PLAN
         yield {"status": "PLANNING", "message": "Analyzing request..."}
         plan = await self.planner.create_plan(prompt)

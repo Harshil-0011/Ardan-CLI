@@ -10,7 +10,7 @@ def run_tests(directory: str = ".") -> ToolResult:
         return ToolResult(False, "", str(e))
 
 
-def generate_tests_placeholder(file_path: str) -> ToolResult:
+def generate_tests(file_path: str) -> ToolResult:
     """Agent should use the LLM to write unit tests for the given file."""
     # This tool is a signal for the agent to use its own reasoning
     # and write_file tool to create tests.

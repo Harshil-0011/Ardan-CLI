@@ -77,6 +77,8 @@ def run(
                     console_ui.print_step_start(update["step"])
                 elif status == "STEP_PROGRESS":
                     console_ui.console.print(update["chunk"], end="")
+                elif status == "WARNING":
+                    console_ui.console.print(update["message"])
                 elif status == "DONE":
                     console_ui.print_success(update["message"])
                     console_ui.display_summary(update)
@@ -134,17 +136,45 @@ def models(provider: Optional[str] = None, all: bool = False):
 
 
 @app.command()
-def keys(action: str, provider: str, value: Optional[str] = None):
-    """Manage API keys securely."""
+def keys(
+    action: str = typer.Argument(..., help="Action: set, list, remove, test"),
+    provider: Optional[str] = typer.Argument(None, help="The AI provider"),
+    value: Optional[str] = typer.Option(None, "--value", help="Directly provide the key value"),
+):
+    """Manage AI provider API keys securely."""
     if action == "set":
+        if not provider:
+            typer.echo("Error: 'set' requires a provider.")
+            raise typer.Exit(1)
         credentials_manager.set(
             provider,
             value or typer.prompt(f"Enter key for {provider}", hide_input=True),
         )
+        typer.echo(f"Key for {provider} stored successfully.")
     elif action == "list":
-        typer.echo(credentials_manager.list_masked())
+        typer.echo("Stored API Keys (Masked):")
+        for p, k in credentials_manager.list_masked().items():
+            typer.echo(f"- {p}: {k}")
     elif action == "remove":
+        if not provider:
+            typer.echo("Error: 'remove' requires a provider.")
+            raise typer.Exit(1)
         credentials_manager.remove(provider)
+        typer.echo(f"Key for {provider} removed.")
+    elif action == "test":
+        if not provider:
+            typer.echo("Error: 'test' requires a provider.")
+            raise typer.Exit(1)
+
+        async def _test():
+            agent = AgentCore(settings, provider_override=provider)
+            health = await agent.provider.health_check()
+            if health.status == "healthy":
+                console_ui.print_success(f"{provider} is healthy: {health.message}")
+            else:
+                console_ui.print_error(f"{provider} check failed: {health.message}")
+
+        asyncio.run(_test())
 
 
 @app.command()

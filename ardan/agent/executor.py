@@ -20,7 +20,7 @@ from ardan.tools.shell_tools import (
     compile_cpp,
     run_binary,
 )
-from ardan.tools.code_tools import lint_python, format_python, search_in_files
+from ardan.tools.code_tools import lint_python, format_python, search_in_files, investigate_codebase
 from ardan.tools.git_tools import (
     git_init,
     git_commit,
@@ -28,7 +28,7 @@ from ardan.tools.git_tools import (
     git_status,
     generate_commit_message,
 )
-from ardan.tools.test_tools import run_tests, generate_tests_placeholder
+from ardan.tools.test_tools import run_tests, generate_tests
 from ardan.tools.docker_tools import (
     docker_build,
     docker_run,
@@ -59,13 +59,14 @@ class Executor:
             "lint_python": lint_python,
             "format_python": format_python,
             "search_in_files": search_in_files,
+            "investigate_codebase": investigate_codebase,
             "git_init": git_init,
             "git_commit": git_commit,
             "git_branch": git_branch,
             "git_status": git_status,
             "generate_commit_message": generate_commit_message,
             "run_tests": run_tests,
-            "generate_tests": generate_tests_placeholder,
+            "generate_tests": generate_tests,
             "docker_build": docker_build,
             "docker_run": docker_run,
             "generate_dockerfile": generate_dockerfile,
