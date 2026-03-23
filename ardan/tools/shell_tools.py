@@ -1,14 +1,21 @@
 import subprocess
 import os
 import tempfile
+import shlex
 from .file_tools import ToolResult
 
 
 def run_command(command: str, cwd: str = None, timeout: int = 60) -> ToolResult:
+    """Execute a system command safely without using shell=True."""
     try:
+        # Split the command into a list of arguments safely
+        # Note: This prevents common shell injection vectors like ';' or '&&'
+        # if the user tries to chain commands in a single argument.
+        safe_args = shlex.split(command)
+
         process = subprocess.Popen(
-            command,
-            shell=True,
+            safe_args,
+            shell=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -59,14 +66,17 @@ def run_script(script_content: str, language: str = "bash") -> ToolResult:
 
 def compile_c(src_path: str, output_path: str = "a.out") -> ToolResult:
     """Compile C source code using gcc."""
-    return run_command(f"gcc -O3 {src_path} -o {output_path}")
+    # Note: we pass arguments as separate elements to ensure safety
+    return run_command(f"gcc -O3 {shlex.quote(src_path)} -o {shlex.quote(output_path)}")
 
 
 def compile_cpp(src_path: str, output_path: str = "a.out") -> ToolResult:
     """Compile C++ source code using g++."""
-    return run_command(f"g++ -O3 {src_path} -o {output_path}")
+    return run_command(f"g++ -O3 {shlex.quote(src_path)} -o {shlex.quote(output_path)}")
 
 
 def run_binary(path: str, args: str = "") -> ToolResult:
     """Run a compiled binary."""
-    return run_command(f"./{path} {args}")
+    # Ensure the path is prefixed with ./ if not present
+    binary_path = path if path.startswith("./") or path.startswith("/") else f"./{path}"
+    return run_command(f"{shlex.quote(binary_path)} {args}")
