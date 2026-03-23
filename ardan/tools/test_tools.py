@@ -2,25 +2,15 @@ import subprocess
 import os
 from .file_tools import ToolResult
 
-def generate_test_file(path: str, code_content: str) -> ToolResult:
-    """Auto-generate a unit test file for the given code."""
+def run_tests(directory: str = ".") -> ToolResult:
     try:
-        # For this tool implementation, we create a boilerplate test
-        # In a real build, the AI would generate the specific test cases.
-        test_path = os.path.join(os.path.dirname(path), "test_" + os.path.basename(path))
-        content = f"import pytest\n\ndef test_logic():\n    # Automatically generated test skeleton for {path}\n    assert True\n"
-        with open(test_path, "w") as f:
-             f.write(content)
-        return ToolResult(True, f"Generated boilerplate test file at {test_path}")
+        res = subprocess.run(["pytest", directory], capture_output=True, text=True)
+        return ToolResult(res.returncode == 0, res.stdout, res.stderr)
     except Exception as e:
         return ToolResult(False, "", str(e))
 
-def run_tests(directory: str) -> ToolResult:
-    try:
-        result = subprocess.run(["pytest", directory], capture_output=True, text=True)
-        if result.returncode == 0:
-             return ToolResult(True, result.stdout)
-        else:
-             return ToolResult(False, result.stdout, result.stderr)
-    except Exception as e:
-        return ToolResult(False, "", str(e))
+def generate_tests_placeholder(file_path: str) -> ToolResult:
+    """Agent should use the LLM to write unit tests for the given file."""
+    # This tool is a signal for the agent to use its own reasoning
+    # and write_file tool to create tests.
+    return ToolResult(True, f"Agent instruction: analyze {file_path} and write unit tests for it.", "")

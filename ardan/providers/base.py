@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List, Dict, Any, Optional, Union, Generator
+from typing import AsyncIterator, List, Optional
 from ardan.agent.messages import Message, GenerationConfig, ModelInfo, HealthStatus
 
 class BaseProvider(ABC):
@@ -15,12 +15,21 @@ class BaseProvider(ABC):
 
     @abstractmethod
     async def generate(self, messages: List[Message], config: GenerationConfig) -> AsyncIterator[str]:
+        """Perform asynchronous streaming generation."""
         pass
 
     @abstractmethod
-    def list_models(self) -> List[ModelInfo]:
+    async def list_models(self) -> List[ModelInfo]:
+        """Return a list of supported models."""
         pass
 
     @abstractmethod
-    def health_check(self) -> HealthStatus:
+    async def health_check(self) -> HealthStatus:
+        """Check if the provider is reachable and correctly configured."""
         pass
+
+class ArdanProviderError(Exception):
+    """Custom exception for provider-specific errors."""
+    def __init__(self, message: str, provider: str):
+        self.provider = provider
+        super().__init__(f"[{provider}] {message}")

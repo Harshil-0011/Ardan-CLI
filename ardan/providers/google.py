@@ -1,6 +1,7 @@
-import time
-from typing import List, Generator, Optional, Any, Dict
-from ardan.providers.base import BaseProvider
+import os
+import asyncio
+from typing import AsyncIterator, List, Optional
+from ardan.providers.base import BaseProvider, ArdanProviderError
 from ardan.agent.messages import Message, GenerationConfig, ModelInfo, HealthStatus
 
 try:
@@ -12,62 +13,51 @@ class GoogleProvider(BaseProvider):
     name = "google"
     display_name = "Google"
     requires_api_key = True
-    supported_models = ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-1.5-pro", "gemini-1.5-flash"]
-    default_model = "gemini-2.0-flash"
+    supported_models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    default_model = "gemini-2.5-pro"
 
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         super().__init__(api_key, base_url)
-        if genai:
-             genai.configure(api_key=api_key)
+        if genai and api_key:
+            genai.configure(api_key=api_key)
 
     async def generate(self, messages: List[Message], config: GenerationConfig) -> AsyncIterator[str]:
         if not genai:
-             raise ImportError("Google SDK not installed. Run: pip install ardan[google]")
+            raise ArdanProviderError("Google SDK not installed. Install with: pip install ardan[google]", self.name)
 
-        system_instruction = ""
-        user_messages = []
-        for m in messages:
-             if m.role == "system":
-                  system_instruction += m.content + "\n"
-             else:
-                  role = "user" if m.role == "user" else "model"
-                  content = [m.content]
-                  if m.images:
-                       import base64
-                       import PIL.Image
-                       import io
-                       for img in m.images:
-                            content.append(PIL.Image.open(io.BytesIO(base64.b64decode(img))))
-                  user_messages.append({"role": role, "parts": content})
+        system_instruction = next((m.content for m in messages if m.role == "system"), None)
+        contents = [{"role": "user" if m.role == "user" else "model", "parts": [m.content]} for m in messages if m.role != "system"]
 
         model = genai.GenerativeModel(
-             model_name=self.default_model,
-             system_instruction=system_instruction
+            model_name=self.default_model,
+            system_instruction=system_instruction
         )
 
-        gen_config = genai.types.GenerationConfig(
-             temperature=config.temperature,
-             max_output_tokens=config.max_tokens,
-             top_p=config.top_p,
-             stop_sequences=config.stop_sequences
-        )
+        try:
+            response = await model.generate_content_async(
+                contents,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=config.temperature,
+                    max_output_tokens=config.max_tokens,
+                    top_p=config.top_p,
+                ),
+                stream=True
+            )
+            async for chunk in response:
+                yield chunk.text
+        except Exception as e:
+            if "safety" in str(e).lower():
+                # Potential retry with relaxed safety if logic allowed
+                raise ArdanProviderError(f"Safety filter blocked request: {str(e)}", self.name)
+            raise ArdanProviderError(str(e), self.name)
 
-        if config.stream:
-             response = await model.generate_content_async(user_messages, generation_config=gen_config, stream=True)
-             async for chunk in response:
-                  yield chunk.text
-        else:
-             response = await model.generate_content_async(user_messages, generation_config=gen_config)
-             yield response.text
-
-    def list_models(self) -> List[ModelInfo]:
+    async def list_models(self) -> List[ModelInfo]:
         return [
-            ModelInfo(id="gemini-2.0-flash", name="Gemini 2.0 Flash", provider="google", context_window=1000000),
-            ModelInfo(id="gemini-1.5-pro", name="Gemini 1.5 Pro", provider="google", context_window=2000000),
-            ModelInfo(id="gemini-1.5-flash", name="Gemini 1.5 Flash", provider="google", context_window=1000000)
+            ModelInfo(id="gemini-2.5-pro", name="Gemini 2.5 Pro", provider=self.name, context_window=2000000, pricing_per_1m_tokens=1.25, strength="Huge context, smartest"),
+            ModelInfo(id="gemini-2.0-flash", name="Gemini 2.0 Flash", provider=self.name, context_window=1000000, pricing_per_1m_tokens=0.10, strength="Fastest Google model"),
         ]
 
-    def health_check(self) -> HealthStatus:
-        if not genai:
-             return HealthStatus("unhealthy", "Google SDK not installed.")
-        return HealthStatus("healthy", "Google provider ready.")
+    async def health_check(self) -> HealthStatus:
+        if not genai: return HealthStatus("unhealthy", "Google SDK not installed.")
+        if not self.api_key: return HealthStatus("unhealthy", "API key missing.")
+        return HealthStatus("healthy", "Google configured.")

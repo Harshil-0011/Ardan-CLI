@@ -1,32 +1,26 @@
 import os
 from .file_tools import ToolResult
 
-def generate_ascii_diagram(directory: str) -> ToolResult:
-    """Analyze the directory and generate a simple ASCII architecture diagram."""
+def generate_architecture_diagram(project_path: str) -> ToolResult:
+    """Produces an ASCII architecture diagram."""
     try:
-        # Simple analysis of top-level directories
-        structure = os.listdir(directory)
-        dirs = [d for d in structure if os.path.isdir(os.path.join(directory, d))]
-        files = [f for f in structure if os.path.isfile(os.path.join(directory, f))]
+        # Simple analysis to build a diagram
+        structure = os.listdir(project_path)
+        diagram = "ARCHITECTURE DIAGRAM\n"
+        diagram += "===================\n\n"
+        diagram += f"Root: {os.path.basename(project_path)}\n"
+        for item in structure:
+            if os.path.isdir(os.path.join(project_path, item)) and not item.startswith("."):
+                diagram += f"  ├── [{item}/]\n"
+                subitems = os.listdir(os.path.join(project_path, item))[:3]
+                for si in subitems:
+                    diagram += f"  │   └── {si}\n"
+            elif os.path.isfile(os.path.join(project_path, item)):
+                diagram += f"  ├── {item}\n"
 
-        diagram = "Architecture Diagram:\n"
-        diagram += "+-------------------+\n"
-        diagram += "|    User Request   |\n"
-        diagram += "+---------+---------+\n"
-        diagram += "          |\n"
-        diagram += "          v\n"
-        diagram += "+---------+---------+\n"
-        diagram += "|   Ardan Agent     |\n"
-        diagram += "+---------+---------+\n"
-        diagram += "          |\n"
-        diagram += "          v\n"
+        with open(os.path.join(project_path, "ARCHITECTURE.md"), "w") as f:
+            f.write(f"```text\n{diagram}\n```")
 
-        for d in dirs[:5]:
-             diagram += f"+------- {d}/ -------+\n"
-
-        for f in files[:5]:
-             diagram += f"| {f}\n"
-
-        return ToolResult(True, diagram)
+        return ToolResult(True, diagram, "")
     except Exception as e:
         return ToolResult(False, "", str(e))

@@ -1,27 +1,27 @@
 import subprocess
 import os
+import re
+from typing import List
 from .file_tools import ToolResult
 
-def scan_deps(directory: str) -> ToolResult:
+def scan_imports(directory: str) -> ToolResult:
     try:
-        # Simple scan looking for common files like requirements.txt, etc.
-        deps = []
-        if os.path.exists(os.path.join(directory, "requirements.txt")):
-             deps.append("Python requirements.txt")
-        if os.path.exists(os.path.join(directory, "package.json")):
-             deps.append("Node.js package.json")
-        return ToolResult(True, f"Found dependencies for: {', '.join(deps)}")
+        imports = set()
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file.endswith(".py"):
+                    with open(os.path.join(root, file), "r") as f:
+                        content = f.read()
+                        # Simple regex for imports
+                        found = re.findall(r"^(?:import|from)\s+([a-zA-Z0-9_]+)", content, re.MULTILINE)
+                        imports.update(found)
+        return ToolResult(True, ", ".join(sorted(list(imports))), "")
     except Exception as e:
         return ToolResult(False, "", str(e))
 
-def auto_install_deps(directory: str) -> ToolResult:
+def install_missing(packages: List[str]) -> ToolResult:
     try:
-        if os.path.exists(os.path.join(directory, "requirements.txt")):
-             subprocess.run(["pip", "install", "-r", "requirements.txt"], cwd=directory, check=True)
-             return ToolResult(True, "Python dependencies installed.")
-        elif os.path.exists(os.path.join(directory, "package.json")):
-             subprocess.run(["npm", "install"], cwd=directory, check=True)
-             return ToolResult(True, "Node.js dependencies installed.")
-        return ToolResult(False, "", "No dependencies file found.")
+        subprocess.run(["pip", "install"] + packages, check=True, capture_output=True)
+        return ToolResult(True, f"Installed: {', '.join(packages)}", "")
     except Exception as e:
         return ToolResult(False, "", str(e))

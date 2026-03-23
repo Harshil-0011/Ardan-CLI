@@ -1,16 +1,16 @@
 # Ardan: The World's Most Powerful Autonomous Coding Agent CLI
 
-Ardan is a high-performance, multi-provider coding agent that outperforms all competitors in intelligence, flexibility, and developer experience.
+Ardan is an elite, multi-provider autonomous coding agent that combines the reasoning power of the world's best LLMs with a high-fidelity developer toolset. Designed for speed, intelligence, and a superior developer experience, Ardan beats every competitor on the market.
 
 ---
 
 ## 🚀 Why Ardan?
 
--   **🧠 Multi-Provider Intelligence**: Seamlessly switch between Anthropic (Claude), Google (Gemini), OpenAI (GPT-4o), Mistral, Groq, and OpenRouter.
--   **⚡ Unmatched Speed**: Real-time tokens-per-second display, especially on Groq.
--   **🔌 Elite Toolset**: Full control over Git, Docker, Testing, Dependencies, and Architecture Diagrams.
--   **🛡️ Secure Credentials**: API keys are stored encrypted at rest with machine-derived keys.
--   **✨ Master-Level Agent Loop**: Autonomous planning, execution with self-correction, and senior-level code review.
+-   **🧠 Multi-Provider Intelligence**: Seamlessly swap between Anthropic, Google, OpenAI, Mistral, Groq, and OpenRouter.
+-   **⚡ Extreme Performance**: Real-time tokens-per-second tracking and parallel task execution for maximum efficiency.
+-   **🔌 Elite Toolset**: Deep integrations for Git, Docker, Python quality tools, and C/C++ compilation.
+-   **🛡️ Industrial Security**: AES-encrypted API key storage secured by your machine's unique hardware identifier.
+-   **✨ Master ReAct Loop**: Autonomous planning, parallel execution, self-correction, senior review passes, and proactive suggestions.
 
 ---
 
@@ -18,66 +18,83 @@ Ardan is a high-performance, multi-provider coding agent that outperforms all co
 
 Ardan is provider-agnostic. Use the best model for your task:
 
-| Provider | Recommended Model | Best For... |
-| :--- | :--- | :--- |
-| **Anthropic** | `claude-3-5-sonnet` | Complex logic, reasoning |
-| **Google** | `gemini-2.0-flash` | Speed, large context (1M+ tokens) |
-| **OpenAI** | `gpt-4o` | General purpose, tool accuracy |
-| **Mistral** | `codestral-latest` | Dedicated code generation |
-| **Groq** | `llama-3.3-70b` | Extreme performance, real-time TPS |
-| **Ollama** | `codellama:13b` | 100% local, no-cost experimentation |
+| Provider | Recommended Model | Strength | Cost (1M Tokens) |
+| :--- | :--- | :--- | :--- |
+| **Anthropic** | `claude-sonnet-4-6` | Complex reasoning | $3.00 |
+| **Google** | `gemini-2.5-pro` | Smartest, huge context | $1.25 |
+| **OpenAI** | `gpt-4.1` | Best tool accuracy | $2.00 |
+| **Mistral** | `codestral-latest` | Dedicated code generation | $1.00 |
+| **Groq** | `llama-3.3-70b` | Fastest inference alive | Free tier |
+| **OpenRouter** | `deepseek/coder-v2` | Best open source | $0.14 |
+| **Ollama** | `codellama:13b` | 100% local, no cost | Free |
 
 ---
 
-## 📋 Installation
+## 📦 Installation
 
-1.  **Prerequisites**: Python 3.11+
-2.  **Install Ardan**:
-    ```bash
-    git clone https://github.com/yourusername/ardan.git
-    cd ardan
-    pip install -e .
-    ```
-3.  **Optional: Install Provider SDKs**:
-    ```bash
-    pip install "ardan[all]"  # Installs all provider SDKs
-    ```
-
----
-
-## 🔐 Credentials Setup
-
-Securely store your API keys:
+### Core Install
 ```bash
-ardan keys set anthropic YOUR_API_KEY
-ardan keys set openai YOUR_API_KEY
-ardan keys test google
+git clone https://github.com/yourusername/ardan.git
+cd ardan
+pip install -e .
+```
+
+### Install with All Providers
+```bash
+pip install -e ".[all]"
 ```
 
 ---
 
-## 📖 Power Usage
+## 🔑 Setup Guide
 
-### Run with Specific Provider
+### Secure Your Keys
 ```bash
-ardan run "Build a React + FastAPI app" --provider anthropic --model claude-3-5-sonnet
+ardan keys set anthropic   # Prompts for key and encrypts it
+ardan keys set openai
+ardan keys list            # Shows configured providers (masked)
+ardan keys test google    # Validates key and connectivity
 ```
 
-### Advanced Chat Mode
-```bash
-ardan chat --provider groq --model llama-3.3-70b-versatile
-```
-
-### New Advanced Tools
--   **Git**: `git_init`, `git_commit`, `git_branch`
--   **Docker**: `docker_build`, `docker_run`, `generate_dockerfile`
--   **Quality**: `run_tests`, `scan_deps`, `auto_install_deps`
--   **Architecture**: `generate_ascii_diagram`
+### Get API Keys
+- **Anthropic**: [console.anthropic.com](https://console.anthropic.com/)
+- **Google**: [aistudio.google.com](https://aistudio.google.com/app/apikey)
+- **OpenAI**: [platform.openai.com](https://platform.openai.com/api-keys)
+- **Groq**: [console.groq.com](https://console.groq.com/keys)
 
 ---
 
-## ❓ FAQ
+## 📖 Command Reference
 
--   **Failover**: If your primary provider is rate-limited, Ardan can automatically failover to a backup.
--   **Security**: Keys are encrypted using your machine's unique identifier.
--   **Plan Mode**: Use `/plan` in chat to break down massive features into structured execution steps.
+### Build a System
+```bash
+ardan run "Build a React + FastAPI Todo app with Docker" --provider anthropic
+```
+-   `--auto`: Skip all confirmation prompts.
+-   `--watch`: Monitor the workspace and re-build on file changes.
+
+### Power Tools
+-   `ardan chat`: Interactive REPL with autocompletion and checkpointing.
+-   `ardan recommend "Task"`: AI-driven advice on the best provider for your needs.
+-   `ardan explain "file.py"`: Deep analysis of any source file.
+-   `ardan improve "file.py"`: AI-driven refactoring and best practice alignment.
+-   `ardan diff`: See exactly what Ardan changed in this session.
+-   `ardan undo`: Revert file creations and modifications instantly.
+
+---
+
+## 🛠️ Adding Custom Tools
+
+Extending Ardan is simple:
+1.  Add your function to a module in `ardan/tools/`.
+2.  Ensure it returns `ToolResult(success: bool, output: str, error: str)`.
+3.  Register it in `ardan/agent/executor.py`'s `self.tools` map.
+4.  Add the tool signature to `ardan/ollama/prompts.py` so the agent knows it exists.
+
+---
+
+## ❓ Troubleshooting
+
+-   **Ollama Connection**: Ensure `ollama serve` is running if using the local provider.
+-   **Rate Limits**: If a provider is limited, Ardan will automatically attempt to failover to a configured backup.
+-   **Pillow Errors**: Ensure system dependencies for `Pillow` (like `libjpeg-dev`) are installed for multimodal features.

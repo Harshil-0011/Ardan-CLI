@@ -50,24 +50,12 @@ def run_script(script_content: str, language: str = "bash") -> ToolResult:
 
 def compile_c(src_path: str, output_path: str = "a.out") -> ToolResult:
     """Compile C source code using gcc."""
-    try:
-        command = f"gcc -O3 {src_path} -o {output_path}"
-        return run_command(command)
-    except Exception as e:
-        return ToolResult(False, "", str(e))
+    return run_command(f"gcc -O3 {src_path} -o {output_path}")
 
 def compile_cpp(src_path: str, output_path: str = "a.out") -> ToolResult:
     """Compile C++ source code using g++."""
-    try:
-        command = f"g++ -O3 {src_path} -o {output_path}"
-        return run_command(command)
-    except Exception as e:
-        return ToolResult(False, "", str(e))
+    return run_command(f"g++ -O3 {src_path} -o {output_path}")
 
 def run_binary(path: str, args: str = "") -> ToolResult:
     """Run a compiled binary."""
-    try:
-        command = f"./{path} {args}"
-        return run_command(command)
-    except Exception as e:
-        return ToolResult(False, "", str(e))
+    return run_command(f"./{path} {args}")

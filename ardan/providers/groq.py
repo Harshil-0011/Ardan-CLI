@@ -1,6 +1,8 @@
+import os
+import asyncio
 import time
-from typing import List, AsyncIterator, Optional, Any, Dict
-from ardan.providers.base import BaseProvider
+from typing import AsyncIterator, List, Optional
+from ardan.providers.base import BaseProvider, ArdanProviderError
 from ardan.agent.messages import Message, GenerationConfig, ModelInfo, HealthStatus
 
 try:
@@ -15,54 +17,44 @@ class GroqProvider(BaseProvider):
     supported_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
     default_model = "llama-3.3-70b-versatile"
 
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         super().__init__(api_key, base_url)
-        self.client = None
-        if groq:
-             self.client = groq.Groq(api_key=api_key)
+        self.client = groq.AsyncGroq(api_key=api_key) if groq and api_key else None
 
     async def generate(self, messages: List[Message], config: GenerationConfig) -> AsyncIterator[str]:
         if not self.client:
-             raise ImportError("Groq SDK not installed. Run: pip install ardan[groq]")
+            raise ArdanProviderError("Groq SDK not installed or API key missing. Install with: pip install ardan[groq]", self.name)
 
-        async_client = groq.AsyncGroq(api_key=self.api_key)
+        try:
+            start_time = time.time()
+            token_count = 0
+            response = await self.client.chat.completions.create(
+                model=self.default_model,
+                messages=[{"role": m.role, "content": m.content} for m in messages],
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+                top_p=config.top_p,
+                stream=True
+            )
+            async for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    token_count += len(content.split()) # Rough estimate
+                    yield content
 
-        user_messages = [{"role": m.role, "content": m.content} for m in messages]
+            elapsed = time.time() - start_time
+            if elapsed > 0:
+                 tps = token_count / elapsed
+                 yield f"\n[TPS: {tps:.2f}]\n"
+        except Exception as e:
+            raise ArdanProviderError(str(e), self.name)
 
-        start_time = time.time()
-        total_tokens = 0
-
-        if config.stream:
-             response = await async_client.chat.completions.create(
-                  model=self.default_model,
-                  messages=user_messages,
-                  temperature=config.temperature,
-                  max_tokens=config.max_tokens,
-                  top_p=config.top_p,
-                  stream=True
-             )
-             async for chunk in response:
-                  if chunk.choices and chunk.choices[0].delta.content:
-                       yield chunk.choices[0].delta.content
-        else:
-             response = await async_client.chat.completions.create(
-                  model=self.default_model,
-                  messages=user_messages,
-                  temperature=config.temperature,
-                  max_tokens=config.max_tokens,
-                  top_p=config.top_p,
-                  stream=False
-             )
-             yield response.choices[0].message.content
-
-    def list_models(self) -> List[ModelInfo]:
+    async def list_models(self) -> List[ModelInfo]:
         return [
-            ModelInfo(id="llama-3.3-70b-versatile", name="Llama 3.3 70b Versatile", provider="groq", context_window=128000),
-            ModelInfo(id="llama-3.1-8b-instant", name="Llama 3.1 8b Instant", provider="groq", context_window=128000),
-            ModelInfo(id="mixtral-8x7b-32768", name="Mixtral 8x7b 32768", provider="groq", context_window=32768)
+            ModelInfo(id="llama-3.3-70b-versatile", name="Llama 3.3 70b", provider=self.name, context_window=128000, pricing_per_1m_tokens=0.0, strength="Fastest inference alive"),
         ]
 
-    def health_check(self) -> HealthStatus:
-        if not self.client:
-             return HealthStatus("unhealthy", "Groq SDK not installed.")
-        return HealthStatus("healthy", "Groq provider ready.")
+    async def health_check(self) -> HealthStatus:
+        if not groq: return HealthStatus("unhealthy", "Groq SDK not installed.")
+        if not self.api_key: return HealthStatus("unhealthy", "API key missing.")
+        return HealthStatus("healthy", "Groq configured.")

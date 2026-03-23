@@ -21,9 +21,23 @@ class ArdanConsole:
 ██╔══██║██╔══██╗██║  ██║██╔══██║██║╚██╗██║
 ██║  ██║██║  ██║██████╔╝██║  ██║██║ ╚████║
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝
-    Autonomous Coding Agent CLI
+    THE WORLD'S MOST POWERFUL CODING AGENT
         """
         self.console.print(Panel(banner, style="bold cyan"))
+
+    def print_provider_badge(self, provider: str, model: str):
+        colors = {
+            "anthropic": "orange1",
+            "google": "blue",
+            "openai": "green",
+            "mistral": "purple",
+            "groq": "yellow",
+            "openrouter": "cyan",
+            "ollama": "white"
+        }
+        color = colors.get(provider.lower(), "white")
+        local_badge = " [LOCAL]" if provider == "ollama" else ""
+        self.console.print(f"[bold {color}]● {provider.upper()}[/bold {color}] ({model}){local_badge}")
         self.console.print("Tips for getting started:")
         self.console.print("1. Ask questions, edit files, or run commands.")
         self.console.print("2. Use [bold magenta]@path/to/file[/bold magenta] to include file content in context.")
@@ -86,15 +100,18 @@ class ArdanConsole:
         )
         return Panel(grid, style="white on blue")
 
-    def display_summary(self, stats: dict):
-        table = Table(title="Project Summary")
+    def display_summary(self, update_data: dict):
+        stats = update_data.get("stats", {})
+        table = Table(title="Project Summary", border_style="bold green")
         table.add_column("Category", style="cyan")
         table.add_column("Count", style="white")
         table.add_column("Details", style="magenta")
 
         table.add_row("Files Created", str(len(stats.get("files_created", []))), ", ".join(stats.get("files_created", [])))
-        table.add_row("Files Modified", str(len(stats.get("files_modified", []))), ", ".join(stats.get("files_modified", [])))
         table.add_row("Commands Run", str(len(stats.get("commands_run", []))), "")
-        table.add_row("Errors", str(len(stats.get("errors", []))), ", ".join(stats.get("errors", [])))
+        table.add_row("Confidence", f"{update_data.get('confidence', 0)*100}%", "")
 
         self.console.print(table)
+
+        if update_data.get("suggestions"):
+             self.console.print(Panel("\n".join([f"• {s}" for s in update_data["suggestions"]]), title="Proactive Suggestions", border_style="cyan"))

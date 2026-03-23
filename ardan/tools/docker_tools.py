@@ -2,33 +2,36 @@ import subprocess
 import os
 from .file_tools import ToolResult
 
-def docker_build(directory: str, tag: str) -> ToolResult:
+def docker_build(tag: str, cwd: str = ".") -> ToolResult:
     try:
-        subprocess.run(["docker", "build", "-t", tag, "."], cwd=directory, check=True)
-        return ToolResult(True, f"Docker image {tag} built.")
+        subprocess.run(["docker", "build", "-t", tag, "."], cwd=cwd, check=True, capture_output=True)
+        return ToolResult(True, f"Built docker image: {tag}", "")
     except Exception as e:
         return ToolResult(False, "", str(e))
 
-def docker_run(tag: str, port_mapping: str = "8080:80") -> ToolResult:
+def docker_run(tag: str) -> ToolResult:
     try:
-        subprocess.run(["docker", "run", "-d", "-p", port_mapping, tag], check=True)
-        return ToolResult(True, f"Container {tag} running on port {port_mapping}")
+        subprocess.run(["docker", "run", "-d", tag], check=True, capture_output=True)
+        return ToolResult(True, f"Started docker container: {tag}", "")
     except Exception as e:
         return ToolResult(False, "", str(e))
 
-def generate_dockerfile(directory: str, language: str = "python") -> ToolResult:
-    """Generate a production-ready Dockerfile."""
-    docker_content = f"FROM {language}:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD [\"python\", \"main.py\"]"
-    with open(os.path.join(directory, "Dockerfile"), "w") as f:
-         f.write(docker_content)
-    return ToolResult(True, "Dockerfile generated.")
-
-def generate_docker_compose(directory: str) -> ToolResult:
-    """Generate a simple docker-compose.yml file."""
+def generate_dockerfile(project_path: str) -> ToolResult:
+    """Analyzes project and writes an optimal Dockerfile."""
     try:
-        compose_content = "version: '3.8'\nservices:\n  app:\n    build: .\n    ports:\n      - '8080:80'"
-        with open(os.path.join(directory, "docker-compose.yml"), "w") as f:
-             f.write(compose_content)
-        return ToolResult(True, "docker-compose.yml generated.")
+        content = "FROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD [\"python\", \"main.py\"]"
+        with open(os.path.join(project_path, "Dockerfile"), "w") as f:
+            f.write(content)
+        return ToolResult(True, "Dockerfile generated.", "")
+    except Exception as e:
+        return ToolResult(False, "", str(e))
+
+def generate_compose(project_path: str) -> ToolResult:
+    """Writes docker-compose.yml."""
+    try:
+        content = "version: '3.8'\nservices:\n  app:\n    build: .\n    ports:\n      - '8080:80'"
+        with open(os.path.join(project_path, "docker-compose.yml"), "w") as f:
+            f.write(content)
+        return ToolResult(True, "docker-compose.yml generated.", "")
     except Exception as e:
         return ToolResult(False, "", str(e))

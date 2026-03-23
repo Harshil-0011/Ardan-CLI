@@ -1,27 +1,26 @@
 import json
 import re
-from typing import Dict, Any, List, Optional, Generator
-from ardan.ollama.client import OllamaClient
-from ardan.ollama.prompts import EXECUTOR_SYSTEM, TOOL_FORMAT
+import asyncio
+from typing import Dict, Any, List, Optional, AsyncIterator
+from ardan.agent.messages import Message, GenerationConfig
+from ardan.providers.registry import failover_generate
 from ardan.tools.file_tools import read_file, write_file, append_file, list_files, delete_file, search_and_replace, ToolResult
 from ardan.tools.shell_tools import run_command, run_script, compile_c, compile_cpp, run_binary
-from ardan.tools.code_tools import lint_python, format_python, search_in_files, investigate_codebase
-from ardan.tools.web_tools import search_web, fetch_url
-from ardan.tools.git_tools import git_init, git_commit, git_branch
-from ardan.tools.test_tools import run_tests
-from ardan.tools.docker_tools import docker_build, docker_run, generate_dockerfile, generate_docker_compose
-from ardan.tools.deps_tools import scan_deps, auto_install_deps
-from ardan.tools.diagram_tools import generate_ascii_diagram
-from ardan.tools.mcp_tools import MCPManager
+from ardan.tools.code_tools import lint_python, format_python, search_in_files
+from ardan.tools.git_tools import git_init, git_commit, git_branch, git_status, generate_commit_message
+from ardan.tools.test_tools import run_tests, generate_tests_placeholder
+from ardan.tools.docker_tools import docker_build, docker_run, generate_dockerfile, generate_compose
+from ardan.tools.deps_tools import scan_imports, install_missing
+from ardan.tools.diagram_tools import generate_architecture_diagram
+from ardan.tools.web_tools import fetch_url, search_web
+from ardan.ollama.prompts import EXECUTOR_SYSTEM, TOOL_FORMAT
 from ardan.agent.memory import Memory
-from ardan.agent.messages import Message, GenerationConfig
-from typing import Dict, Any, List, Optional, AsyncIterator
 
 class Executor:
-    def __init__(self, provider: Any, memory: Memory, mcp_manager: MCPManager = None):
+    def __init__(self, provider: Any, memory: Memory, settings: Any = None):
         self.provider = provider
         self.memory = memory
-        self.mcp_manager = mcp_manager or MCPManager()
+        self.settings = settings
         self.tools = {
             "read_file": read_file,
             "write_file": write_file,
@@ -31,106 +30,93 @@ class Executor:
             "search_and_replace": search_and_replace,
             "run_command": run_command,
             "run_script": run_script,
-            "compile_c": compile_c,
-            "compile_cpp": compile_cpp,
-            "run_binary": run_binary,
             "lint_python": lint_python,
             "format_python": format_python,
             "search_in_files": search_in_files,
-            "investigate_codebase": investigate_codebase,
-            "search_web": search_web,
-            "fetch_url": fetch_url,
             "git_init": git_init,
             "git_commit": git_commit,
             "git_branch": git_branch,
+            "git_status": git_status,
+            "generate_commit_message": generate_commit_message,
             "run_tests": run_tests,
+            "generate_tests": generate_tests_placeholder,
             "docker_build": docker_build,
             "docker_run": docker_run,
             "generate_dockerfile": generate_dockerfile,
-            "generate_docker_compose": generate_docker_compose,
-            "scan_deps": scan_deps,
-            "auto_install_deps": auto_install_deps,
-            "generate_ascii_diagram": generate_ascii_diagram
+            "generate_compose": generate_compose,
+            "scan_deps": scan_imports,
+            "auto_install_deps": install_missing,
+            "generate_ascii_diagram": generate_architecture_diagram,
+            "fetch_url": fetch_url,
+            "search_web": search_web,
+            "compile_c": compile_c,
+            "compile_cpp": compile_cpp,
+            "run_binary": run_binary
         }
 
-    async def execute_step(self, step: Dict[str, Any], max_retries: int = 5) -> AsyncIterator[str]:
-        # Construct message history for ReAct loop
-        # Include summary of previous actions for context
-        history_context = self.memory.get_full_context()
-        context_prompt = f"\nPrevious Actions Context:\n{history_context}\n" if history_context else ""
-
+    async def execute_step(self, step: Dict[str, Any], max_turns: int = 5) -> AsyncIterator[str]:
         messages = [
             Message(role="system", content=f"{EXECUTOR_SYSTEM}\n{TOOL_FORMAT}"),
-            Message(role="user", content=f"{context_prompt}Current Task: {step['description']}\nHint: {step.get('tool_hint', '')}")
+            Message(role="user", content=f"Task: {step['description']}\nHint: {step.get('tool_hint', '')}")
         ]
 
-        step_done = False
-        steps_taken = 0
-        final_summary = ""
-
-        while not step_done and steps_taken < max_retries:
+        for turn in range(max_turns):
             response_full = ""
-            config = GenerationConfig(stream=True)
-            async for chunk in self.provider.generate(messages, config):
-                 response_full += chunk
-                 yield chunk # Yield tokens for UI streaming
+            async for chunk in failover_generate(messages, GenerationConfig(), self.provider, self.settings):
+                response_full += chunk
+                yield chunk
 
             self.memory.add_step("EXECUTOR_REASONING", response_full)
             messages.append(Message(role="assistant", content=response_full))
 
-            # Check for <tool> blocks
+            # Tool matching
             tool_calls = re.findall(r"<tool>(.*?)</tool>", response_full, re.DOTALL)
+            if not tool_calls:
+                if "<finished>" in response_full:
+                    break
+                continue
 
-            if tool_calls:
-                 for tool_call_str in tool_calls:
-                      try:
-                           tool_call = json.loads(tool_call_str)
-                           tool_name = tool_call.get("name")
-                           tool_args = tool_call.get("args", {})
+            for tc_str in tool_calls:
+                try:
+                    tc = json.loads(tc_str)
+                    name = tc.get("name")
+                    args = tc.get("args", {})
 
-                           result = None
-                           if tool_name in self.tools:
-                                result = self.tools[tool_name](**tool_args)
-                           elif self.mcp_manager and tool_name in self.mcp_manager.tools:
-                                result = self.mcp_manager.call_tool(tool_name, tool_args)
+                    if name in self.tools:
+                        res: ToolResult = self.tools[name](**args)
+                        res_str = f"Observation: {res.output}\nError: {res.error}"
+                        self.memory.add_step("TOOL_RESULT", {"tool": name, "result": res_str})
+                        messages.append(Message(role="user", content=res_str))
 
-                           if result:
-                                result_str = f"Success: {result.success}\nOutput: {result.output}\nError: {result.error}"
-                                self.memory.add_step("TOOL_RESULT", {"tool": tool_name, "args": tool_args, "result": result_str})
-                                messages.append(Message(role="user", content=f"Observation from {tool_name}: {result_str}"))
+                        # Memory tracking
+                        if res.success:
+                            if name == "write_file": self.memory.files_created.append(args.get("path"))
+                            if name in ["append_file", "search_and_replace"]: self.memory.record_modification(args.get("path"))
+                            if name in ["run_command", "run_script"]: self.memory.commands_run.append(args.get("command") or "script")
+                    else:
+                        messages.append(Message(role="user", content=f"Error: Tool {name} not found."))
+                except Exception as e:
+                    messages.append(Message(role="user", content=f"Error parsing tool call: {str(e)}"))
 
-                                # Record stats
-                                if result.success:
-                                     if tool_name == "write_file": self.memory.record_file_created(tool_args.get("path"))
-                                     if tool_name in ["append_file", "search_and_replace"]: self.memory.record_file_modified(tool_args.get("path"))
-                                     if tool_name in ["run_command", "run_script"]: self.memory.record_command_run(tool_args.get("command") or tool_args.get("script_content"))
-                                else:
-                                     self.memory.record_error(result.error)
-                           else:
-                                messages.append(Message(role="user", content=f"Error: Tool '{tool_name}' not found."))
-                      except json.JSONDecodeError as e:
-                           messages.append(Message(role="user", content=f"Error parsing tool call JSON: {str(e)}"))
+    async def run_parallel(self, steps: List[Dict[str, Any]]) -> AsyncIterator[str]:
+         """Run independent tasks in parallel and stream their outputs."""
+         yield f"[Ardan] Initiating parallel execution for {len(steps)} independent tasks...\n"
 
-            # Check for <finished> tag
-            finished_match = re.search(r"<finished>(.*?)</finished>", response_full, re.DOTALL)
-            if finished_match:
-                 final_summary = finished_match.group(1)
-                 step_done = True
+         queue = asyncio.Queue()
 
-            steps_taken += 1
+         async def _worker(step):
+              async for chunk in self.execute_step(step):
+                   await queue.put(chunk)
 
-        yield f"\n[Step Completed: {final_summary or 'Done'}]\n"
+         workers = [asyncio.create_task(_worker(s)) for s in steps]
 
-    async def run(self, task: str) -> AsyncIterator[str]:
-        # Wrapper for running a single task string
-        step = {"description": task, "tool_hint": ""}
-        async for chunk in self.execute_step(step):
-             yield chunk
+         async def _monitor():
+              await asyncio.gather(*workers)
+              await queue.put(None) # Signal completion
 
-    async def execute_parallel(self, steps: List[Dict[str, Any]]) -> AsyncIterator[str]:
-        # In a real implementation, we'd use concurrent.futures
-        # For this CLI, we yield sequentially but mark it as a parallel batch
-        yield "[Starting Parallel Execution Batch]\n"
-        for step in steps:
-             async for chunk in self.execute_step(step):
-                  yield chunk
+         asyncio.create_task(_monitor())
+
+         while True:
+              chunk = await queue.get()
+              if chunk is None: break
+              yield chunk
