@@ -1,6 +1,6 @@
-# 🤖 Ardan: The World's Most Powerful Autonomous Coding Agent CLI
+# 🤖 Ardan — a CLI that flows like divine love, dancing in soft light with every command.
 
-Ardan is an industrial-strength, multi-provider autonomous coding agent that lives in your terminal. It combines master-level reasoning from the world's best LLMs with a high-fidelity developer toolset to build entire software systems from a single prompt.
+Ardan is a soulful, multi-provider autonomous coding agent that lives in your terminal. It combines master-level reasoning from the world's best LLMs with a high-fidelity developer toolset to build entire software systems from a single prompt.
 
 ---
 
@@ -13,7 +13,8 @@ Ardan is an industrial-strength, multi-provider autonomous coding agent that liv
 ██╔══██║██╔══██╗██║  ██║██╔══██║██║╚██╗██║
 ██║  ██║██║  ██║██████╔╝██║  ██║██║ ╚████║
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝
-    THE WORLD'S MOST POWERFUL CODING AGENT
+Ardan — a CLI that flows like divine love,
+dancing in soft light with every command.
 
  ● ANTHROPIC (claude-sonnet-4-6)
 

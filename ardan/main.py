@@ -7,7 +7,7 @@ from ardan.ui.console import ArdanConsole
 from ardan.config.credentials import credentials_manager
 from rich.prompt import Confirm
 
-app = typer.Typer(name="ardan", help="The World's Most Powerful Coding Agent CLI")
+app = typer.Typer(name="ardan", help="Ardan — a CLI that flows like divine love, dancing in soft light with every command.")
 console_ui = ArdanConsole()
 
 

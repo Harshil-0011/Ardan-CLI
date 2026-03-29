@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ardan"
 version = "0.1.0"
-description = "Autonomous coding agent CLI using Ollama"
+description = "Ardan — a CLI that flows like divine love, dancing in soft light with every command."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
