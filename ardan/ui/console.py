@@ -15,21 +15,22 @@ class ArdanConsole:
 ██╔══██║██╔══██╗██║  ██║██╔══██║██║╚██╗██║
 ██║  ██║██║  ██║██████╔╝██║  ██║██║ ╚████║
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝
-    THE WORLD'S MOST POWERFUL CODING AGENT
+Ardan — a CLI that flows like divine love,
+dancing in soft light with every command.
         """
-        self.console.print(Panel(banner, style="bold cyan"))
+        self.console.print(Panel(banner, style="bold light_cyan3"))
 
     def print_provider_badge(self, provider: str, model: str):
         colors = {
             "anthropic": "orange1",
-            "google": "blue",
-            "openai": "green",
-            "mistral": "purple",
-            "groq": "yellow",
-            "openrouter": "cyan",
-            "ollama": "white",
+            "google": "dodger_blue1",
+            "openai": "spring_green2",
+            "mistral": "medium_purple1",
+            "groq": "wheat1",
+            "openrouter": "light_cyan3",
+            "ollama": "grey70",
         }
-        color = colors.get(provider.lower(), "white")
+        color = colors.get(provider.lower(), "grey70")
         local_badge = " [LOCAL]" if provider == "ollama" else ""
         self.console.print(
             f"[bold {color}]● {provider.upper()}[/bold {color}] ({model}){local_badge}"

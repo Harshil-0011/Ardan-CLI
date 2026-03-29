@@ -38,6 +38,7 @@ from ardan.tools.docker_tools import (
 from ardan.tools.deps_tools import scan_imports, install_missing
 from ardan.tools.diagram_tools import generate_architecture_diagram
 from ardan.tools.web_tools import fetch_url, search_web
+from ardan.tools.mcp_tools import MCPManager
 from ardan.ollama.prompts import EXECUTOR_SYSTEM, TOOL_FORMAT
 from ardan.agent.memory import Memory
 
@@ -47,6 +48,9 @@ class Executor:
         self.provider = provider
         self.memory = memory
         self.settings = settings
+        self.mcp_manager = MCPManager()
+        if settings and "mcp" in settings:
+            self.mcp_manager.load_from_config(settings["mcp"])
         self.tools = {
             "read_file": read_file,
             "write_file": write_file,
@@ -118,6 +122,9 @@ class Executor:
 
                     if name in self.tools:
                         res: ToolResult = self.tools[name](**args)
+                        res_str = f"Observation: {res.output}\nError: {res.error}"
+                    elif self.mcp_manager.tools.get(name):
+                        res = self.mcp_manager.call_tool(name, args)
                         res_str = f"Observation: {res.output}\nError: {res.error}"
                         self.memory.add_step(
                             "TOOL_RESULT", {"tool": name, "result": res_str}

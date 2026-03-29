@@ -49,15 +49,34 @@ def detect_active_provider(
 async def failover_generate(
     messages: List[Any], config: Any, primary_provider: BaseProvider, settings: Any
 ):
-    """Attempt generation with failover logic."""
+    """Attempt generation with failover logic through configured providers."""
     try:
         async for chunk in primary_provider.generate(messages, config):
             yield chunk
     except Exception as e:
-        if settings.get("agent", "auto_failover") and primary_provider.name != "ollama":
-            # Simple failover to ollama for now
-            fallback = get_provider_instance("ollama", settings)
-            async for chunk in fallback.generate(messages, config):
-                yield chunk
-        else:
+        if not settings.get("agent", "auto_failover"):
             raise e
+
+        # Get list of other providers that might have keys set
+        providers_to_try = ["anthropic", "openai", "google", "groq", "mistral", "openrouter", "ollama"]
+        tried = {primary_provider.name}
+
+        for p_name in providers_to_try:
+            if p_name in tried:
+                continue
+
+            # Only try if it's ollama or we have a key
+            if p_name != "ollama" and not credentials_manager.get(p_name):
+                continue
+
+            try:
+                fallback = get_provider_instance(p_name, settings)
+                async for chunk in fallback.generate(messages, config):
+                    yield chunk
+                return # Success
+            except Exception:
+                tried.add(p_name)
+                continue
+
+        # If all fallback failed, raise original error
+        raise e

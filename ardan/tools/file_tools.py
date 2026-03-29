@@ -10,8 +10,16 @@ class ToolResult:
     error: str = ""
 
 
+def _ensure_safe_path(path: str) -> str:
+    """Ensure the path is within the workspace and prevent traversal."""
+    if os.path.isabs(path) or ".." in path:
+        raise ValueError(f"Access denied: {path} is outside the allowed workspace.")
+    return path
+
+
 def read_file(path: str) -> ToolResult:
     try:
+        path = _ensure_safe_path(path)
         with open(path, "r", encoding="utf-8") as f:
             return ToolResult(True, f.read())
     except Exception as e:
@@ -20,6 +28,7 @@ def read_file(path: str) -> ToolResult:
 
 def write_file(path: str, content: str) -> ToolResult:
     try:
+        path = _ensure_safe_path(path)
         dirname = os.path.dirname(path)
         if dirname:
             os.makedirs(dirname, exist_ok=True)
@@ -32,6 +41,7 @@ def write_file(path: str, content: str) -> ToolResult:
 
 def append_file(path: str, content: str) -> ToolResult:
     try:
+        path = _ensure_safe_path(path)
         with open(path, "a", encoding="utf-8") as f:
             f.write(content)
         return ToolResult(True, f"Content appended to {path}")
@@ -41,6 +51,7 @@ def append_file(path: str, content: str) -> ToolResult:
 
 def list_files(directory: str, pattern: str = "*") -> ToolResult:
     try:
+        directory = _ensure_safe_path(directory)
         files = glob.glob(os.path.join(directory, pattern), recursive=True)
         # Simple tree view logic
         if not files:
@@ -56,6 +67,7 @@ def list_files(directory: str, pattern: str = "*") -> ToolResult:
 
 def delete_file(path: str) -> ToolResult:
     try:
+        path = _ensure_safe_path(path)
         if os.path.exists(path):
             os.remove(path)
             return ToolResult(True, f"File {path} deleted.")
@@ -67,6 +79,7 @@ def delete_file(path: str) -> ToolResult:
 
 def search_and_replace(path: str, old: str, new: str) -> ToolResult:
     try:
+        path = _ensure_safe_path(path)
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
 

@@ -90,18 +90,54 @@ def run(
 @app.command()
 def chat():
     """Interactive AI developer REPL."""
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.completion import PathCompleter, WordCompleter, MergedCompleter
+    from prompt_toolkit.styles import Style
 
     async def _chat():
         console_ui.print_banner()
         agent = AgentCore(settings)
         console_ui.print_provider_badge(agent.provider_name, agent.model)
+
+        completer = MergedCompleter([
+            PathCompleter(),
+            WordCompleter(["/exit", "/quit", "/help", "/save", "/load", "/rewind", "/stats", "/plan", "/clear"], ignore_case=True)
+        ])
+
+        style = Style.from_dict({
+            "prompt": "ansicyan bold",
+        })
+
+        session = PromptSession(completer=completer, style=style)
+
         while True:
-            user_input = typer.prompt("You")
-            if user_input.lower() in ["exit", "quit"]:
+            try:
+                user_input = await session.prompt_async("ardan > ")
+                if not user_input.strip():
+                    continue
+                if user_input.lower() in ["/exit", "/quit"]:
+                    break
+                if user_input.lower() == "/help":
+                    console_ui.console.print("[bold cyan]Commands:[/bold cyan]")
+                    console_ui.console.print("  /exit, /quit - Exit the chat")
+                    console_ui.console.print("  /help        - Show this help message")
+                    console_ui.console.print("  /clear       - Clear the screen")
+                    console_ui.console.print("  /stats       - Show session stats")
+                    continue
+                if user_input.lower() == "/clear":
+                    console_ui.console.clear()
+                    continue
+                if user_input.lower() == "/stats":
+                    console_ui.display_summary({"stats": {"files_created": agent.memory.files_created, "commands_run": agent.memory.commands_run}, "confidence": 1.0})
+                    continue
+
+                async for chunk in agent.chat(user_input):
+                    console_ui.console.print(chunk, end="")
+                console_ui.console.print()
+            except KeyboardInterrupt:
+                continue
+            except EOFError:
                 break
-            async for chunk in agent.chat(user_input):
-                console_ui.console.print(chunk, end="")
-            console_ui.console.print()
 
     asyncio.run(_chat())
 
@@ -253,9 +289,16 @@ def test():
 
 
 @app.command()
-def config():
-    """Show current configuration."""
-    typer.echo(settings.config)
+def config(edit: bool = typer.Option(False, "--edit", "-e")):
+    """Show or edit current configuration."""
+    if edit:
+        config_path = os.path.join(os.getcwd(), "config.yaml")
+        if not os.path.exists(config_path):
+            typer.echo(f"Config file not found at {config_path}")
+            raise typer.Exit(1)
+        typer.edit(filename=config_path)
+    else:
+        typer.echo(settings.config)
 
 
 @app.command()
